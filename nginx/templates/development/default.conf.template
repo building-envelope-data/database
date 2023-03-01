@@ -43,6 +43,10 @@ upstream frontend {
   server frontend:8080;
 }
 
+upstream graphql-voyager {
+  server graphql-voyager:80;
+}
+
 upstream email {
   server email:80;
 }
@@ -89,6 +93,11 @@ server {
     proxy_set_header Connection $connection_upgrade;
     proxy_cache_bypass $http_upgrade;
     limit_req zone=one burst=30 nodelay;
+  }
+
+  location /graphql-voyager {
+    proxy_pass http://graphql-voyager;
+    limit_req  zone=one burst=10 nodelay;
   }
 
   location /graphql {

@@ -149,6 +149,27 @@ services:
     depends_on:
       - backend
 
+  graphql-voyager:
+    build:
+      context: ./frontend/graphql-voyager
+      dockerfile: ./Dockerfile
+    command: [
+      "yarn", "start"
+      ]
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --output-document /dev/null http://graphql-voyager:8080 || exit 1"]
+      interval: 30s
+      timeout: 30s
+      retries: 3
+    volumes:
+      - ./frontend/graphql-voyager:/app
+    extra_hosts:
+      - ${HOST}:host-gateway
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - backend
+
   nginx: # https://hub.docker.com/_/nginx
     image: nginx:1.23
     command: [
@@ -179,6 +200,7 @@ services:
       - frontend
       - backend
       - email
+      - graphql-voyager
 
 volumes:
   data:
