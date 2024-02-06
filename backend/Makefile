@@ -84,6 +84,11 @@ analyze : ## Analyze with Roslynator
 	dotnet tool run roslynator analyze
 .PHONY : analyze
 
+# https://www.jetbrains.com/help/resharper/ReSharper_Command_Line_Tools.html#install-and-use-resharper-command-line-tools-as-net-core-tools
+inspect : ## Inspect with ReSharper
+	dotnet tool run jb inspectcode --build ./Database.sln
+.PHONY : inspect
+
 play : ## Run facts in `Test.Play` (semi-alternative to the buggy `dotnet script` REPL)
 	dotnet test --filter "FullyQualifiedName~Test.Play"
 .PHONY : play
