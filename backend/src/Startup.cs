@@ -120,6 +120,7 @@ namespace Database
                     var dataSourceBuilder = new NpgsqlDataSourceBuilder(_appSettings.Database.ConnectionString);
                     // https://www.npgsql.org/efcore/mapping/enum.html#mapping-your-enum
                     dataSourceBuilder.MapEnum<Enumerations.DataKind>();
+                    dataSourceBuilder.MapEnum<Enumerations.Standardizer>();
                     options
                     .UseNpgsql(dataSourceBuilder.Build() /*, optionsBuilder => optionsBuilder.UseNodaTime() */)
                     .UseSchemaName(_appSettings.Database.SchemaName)

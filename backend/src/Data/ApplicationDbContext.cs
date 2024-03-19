@@ -18,6 +18,7 @@ namespace Database.Data
             // Create enumerations in public schema because that is where
             // `NpgsqlDataSourceBuilder.MapEnum` expects them to be by default.
             builder.HasPostgresEnum<Enumerations.DataKind>("public");
+            builder.HasPostgresEnum<Enumerations.Standardizer>("public");
         }
 
         private static
