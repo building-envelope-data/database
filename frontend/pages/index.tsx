@@ -10,28 +10,28 @@ function Page() {
     <Layout>
       <div style={{ maxWidth: 768 }}>
         <Typography.Paragraph>
-          <Link href={paths.home}>solarbuildingenvelopes.com</Link> is the
+          <Link href={paths.home}>buildingenvelopedata-dev.c3rro.com</Link> is the
           website of the product data server of{" "}
-          <Typography.Link href="https://www.ise.fraunhofer.de/en/rd-infrastructure/accredited-labs/testlab-solar-facades.html">
-            TestLab Solar Facades
+          <Typography.Link href="https://c3rro.com/eqwin-p/">
+            c3rro - eqwin-p
           </Typography.Link>{" "}
           at{" "}
-          <Typography.Link href="https://www.ise.fraunhofer.de">
-            Fraunhofer Institute for Solar Energy Systems ISE
+          <Typography.Link href="https://www.c3rro.com">
+            c3rro
           </Typography.Link>
           . The product data server is part of the Product Data Network{" "}
           <Typography.Link href={`${process.env.NEXT_PUBLIC_METABASE_URL}`}>
             buildingenvelopedata.org
           </Typography.Link>
           . The product data server is an instance of the{" "}
-          <Typography.Link href="https://github.com/building-envelope-data/database">
-            reference implementation of a database
+          <Typography.Link href="https://github.com/c3rrolutions/hygrothermaldatabase">
+            implementation of a database
           </Typography.Link>
-          . The{" "}
+          . a Fork of the {" "}
           <Typography.Link href="https://github.com/building-envelope-data/database">
             reference implementation of a database
           </Typography.Link>{" "}
-          is open-source with a permissive license, so that everyone can easily
+          which is open-source with a permissive license, so that everyone can easily
           create their own product data server as part of the Product Data
           Network{" "}
           <Typography.Link href={`${process.env.NEXT_PUBLIC_METABASE_URL}`}>
@@ -41,23 +41,20 @@ function Page() {
         </Typography.Paragraph>
         <Typography.Paragraph>
           This website is the frontend of the product data server of{" "}
-          <Typography.Link href="https://www.ise.fraunhofer.de/en/rd-infrastructure/accredited-labs/testlab-solar-facades.html">
-            TestLab Solar Facades
+          <Typography.Link href="https://c3rro.com/eqwin-p/">
+           c3rro - eqwin-p
           </Typography.Link>
           . You can use this website to search this product data server for{" "}
-          <Link href={paths.opticalData}>optical data</Link>,{" "}
-          <Link href={paths.geometricData}>optical data</Link>,{" "}
-          <Link href={paths.calorimetricData}>calorimetric data</Link> and{" "}
-          <Link href={paths.photovoltaicData}>photovoltaic data</Link>. If you
+          <Link href={paths.hygrothermalData}>hygrothermal data</Link>. If you
           would like to search the entire Product Data Network{" "}
           <Typography.Link href={`${process.env.NEXT_PUBLIC_METABASE_URL}`}>
             buildingenvelopedata.org
           </Typography.Link>
           , you can search there for example for{" "}
           <Typography.Link
-            href={`${process.env.NEXT_PUBLIC_METABASE_URL}/data/optical`}
+            href={`${process.env.NEXT_PUBLIC_METABASE_URL}/data/hygrothermal`}
           >
-            optical data{" "}
+            hygrothermal data{" "}
           </Typography.Link>
           . You will find there also an overview about all building envelope{" "}
           <Typography.Link
