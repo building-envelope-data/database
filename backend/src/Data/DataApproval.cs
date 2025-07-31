@@ -1,14 +1,22 @@
 using System;
-using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace Database.Data;
 
 [Owned]
-public sealed class DataApproval
-    : IApproval
+public sealed class DataApproval(
+    DateTime timestamp,
+    string signature,
+    string keyFingerprint,
+    string query,
+    string response,
+    Guid approverId,
+    Reference statement
+    )
+        : IApproval
 {
-    public DataApproval(
+    // Constructor for EF Core because navigation properties cannot be set using a constructor: https://learn.microsoft.com/en-us/ef/core/modeling/constructors#binding-to-mapped-properties
+    private DataApproval(
         DateTime timestamp,
         string signature,
         string keyFingerprint,
@@ -16,22 +24,23 @@ public sealed class DataApproval
         string response,
         Guid approverId
     )
+    : this(
+        timestamp,
+        signature,
+        keyFingerprint,
+        query,
+        response,
+        approverId,
+        null! // EF Core will set this owned navigation property after construction.
+        )
     {
-        Timestamp = timestamp;
-        Signature = signature;
-        KeyFingerprint = keyFingerprint;
-        Query = query;
-        Response = response;
-        ApproverId = approverId;
     }
 
-    public Guid ApproverId { get; private set; }
-    public DateTime Timestamp { get; private set; }
-    public string Signature { get; private set; }
-    public string KeyFingerprint { get; private set; }
-    public string Query { get; private set; }
-    public string Response { get; private set; }
-    public Publication? Publication { get; set; }
-    public Standard? Standard { get; set; }
-    [NotMapped] public IReference? Statement => Standard is not null ? Standard : Publication;
+    public Guid ApproverId { get; private set; } = approverId;
+    public DateTime Timestamp { get; private set; } = timestamp;
+    public string Signature { get; private set; } = signature;
+    public string KeyFingerprint { get; private set; } = keyFingerprint;
+    public string Query { get; private set; } = query;
+    public string Response { get; private set; } = response;
+    public Reference Statement { get; private set; } = statement;
 }

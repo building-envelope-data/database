@@ -13,30 +13,22 @@ public static partial class Log
         Level = LogLevel.Debug,
         Message = "About to send email to `{Recipient}` with subject `{Subject}` and body `{Body}`")]
     public static partial void AboutToSendEmail(
-        this ILogger logger,
+        this ILogger<EmailSender> logger,
         (string name, string address) Recipient,
         string Subject,
         string Body
-    );
+        );
 }
 
-public sealed class EmailSender
-    : IEmailSender
-{
-    private readonly ILogger<EmailSender> _logger;
-    private readonly string _smtpHost;
-    private readonly int _smtpPort;
-
-    public EmailSender(
-        string smtpHost,
-        int smtpPort,
-        ILogger<EmailSender> logger
+public sealed class EmailSender(
+    string smtpHost,
+    int smtpPort,
+    ILogger<EmailSender> logger
     )
-    {
-        _smtpHost = smtpHost;
-        _smtpPort = smtpPort;
-        _logger = logger;
-    }
+{
+    private readonly ILogger<EmailSender> _logger = logger;
+    private readonly string _smtpHost = smtpHost;
+    private readonly int _smtpPort = smtpPort;
 
     public Task SendAsync(
         (string name, string address) recipient,

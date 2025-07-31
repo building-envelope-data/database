@@ -76,10 +76,17 @@ services:
       - XBASE_Email__SmtpPort=${SMTP_PORT}
       - XBASE_OpenIdConnectClientSecret=${OPEN_ID_CONNECT_CLIENT_SECRET}
       - XBASE_VerificationCode=${VERIFICATION_CODE}
+      - XBASE_GnupgPrivateKeyFilename=${GNUPG_PRIVATEKEY_FILE_NAME}
+      - XBASE_GnupgPrivateKeyPassphrase=${GNUPG_PRIVATEKEY_PASSPHRASE}
+      # The value `/dev/pts/0` is the output of running `tty` within `shellb`
+      # https://www.gnupg.org/documentation/manuals/gnupg/Invoking-GPG_002dAGENT.html
+      - GPG_TTY=/dev/pts/0
     volumes:
       - backend_logs:/app/logs
       - files:/app/files
       - ./secrets:/run/secrets:ro
+      # Create volume for GnuPG
+      - gnupg:/root/.gnupg
     depends_on:
       - database
       - email
@@ -102,7 +109,7 @@ services:
 
   nginx: # https://hub.docker.com/_/nginx
     restart: always
-    image: nginx:1.25-bookworm
+    image: nginx:1.27-bookworm
     command: [
       "nginx",
       "-g", "daemon off;"
@@ -128,4 +135,5 @@ volumes:
   data:
   emails:
   files:
+  gnupg:
   backend_logs:

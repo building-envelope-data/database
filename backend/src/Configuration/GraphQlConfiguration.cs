@@ -27,6 +27,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using IServiceCollection = Microsoft.Extensions.DependencyInjection.IServiceCollection;
+using Database.GraphQl.DataApprovals;
+using Database.GraphQl.AccessRights;
+using Database.GraphQl.MethodAsService;
+using Database.GraphQl.ResponseApprovals;
 
 namespace Database.Configuration;
 
@@ -38,14 +42,18 @@ public static class GraphQlConfiguration
         AppSettings appSettings
     )
     {
-        // Stitching Services
-        // https://chillicream.com/docs/hotchocolate/v13/distributed-schema/schema-stitching
-        var httpClientBuilder = services.AddHttpClient(
+        // Stitching Services https://chillicream.com/docs/hotchocolate/v13/distributed-schema/schema-stitching
+        var httpMetabaseClientBuilder = services.AddHttpClient(
             WellKnownSchemaNames.Metabase,
             _ => _.BaseAddress = new Uri($"{appSettings.MetabaseHost}/graphql")
         );
+        var httpDatabaseClientBuilder = services.AddHttpClient(
+            WellKnownSchemaNames.Database,
+            _ => _.BaseAddress = new Uri($"{appSettings.Host}/graphql")
+        );
         if (!environment.IsProduction())
-            httpClientBuilder.ConfigurePrimaryHttpMessageHandler(_ =>
+        {
+            httpMetabaseClientBuilder.ConfigurePrimaryHttpMessageHandler(_ =>
                 new HttpClientHandler
                 {
                     // ClientCertificateOptions = ClientCertificateOption.Manual,
@@ -53,6 +61,16 @@ public static class GraphQlConfiguration
                         HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 }
             );
+        }
+
+        httpDatabaseClientBuilder.ConfigurePrimaryHttpMessageHandler(_ =>
+            new HttpClientHandler
+            {
+                // ClientCertificateOptions = ClientCertificateOption.Manual,
+                ServerCertificateCustomValidationCallback =
+                    HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+            }
+        );
         // Automatic-Persisted-Queries Services
         services
             .AddMemoryCache()
@@ -60,6 +78,7 @@ public static class GraphQlConfiguration
         // GraphQL Server
         services
             .AddGraphQLServer()
+            .BindRuntimeType<uint, NonNegativeIntType>()
             // Services https://chillicream.com/docs/hotchocolate/v13/integrations/entity-framework#registerdbcontext
             .RegisterDbContextFactory<ApplicationDbContext>()
             .AddMutationConventions(new MutationConventionOptions { ApplyToAllMutations = false })
@@ -138,15 +157,20 @@ public static class GraphQlConfiguration
             .AddType<UserQueries>()
             .AddType<VerificationCodeQueries>()
             .AddType<GeometricDataQueries>()
+            .AddType<MethodAsServiceQueries>()
+            .AddType<DataQueries>()
             // Mutation Types
             .AddMutationType(d => d.Name(nameof(Mutation)))
             .AddType<CalorimetricDataMutations>()
+            .AddType<DataAccessRightsMutations>()
+            .AddType<DataApprovalMutations>()
             .AddType<DatabaseMutations>()
+            .AddType<GeometricDataMutations>()
             .AddType<GetHttpsResourceMutations>()
             .AddType<HygrothermalDataMutations>()
             .AddType<OpticalDataMutations>()
             .AddType<PhotovoltaicDataMutations>()
-            .AddType<GeometricDataMutations>()
+            .AddType<ResponseApprovalMutations>()
             /* .AddSubscriptionType(d => d.Name(nameof(GraphQl.Subscription))) */
             /*     .AddType<ComponentSubscriptions>() */
             // Object Types
@@ -164,6 +188,7 @@ public static class GraphQlConfiguration
             .AddType<StandardType>()
             .AddType<GeometricDataType>()
             .AddType<UserType>()
+            .AddType<UploadType>()
             // Data Loaders
             /* .AddDataLoader<GraphQl.Components.ComponentByIdDataLoader>() */
             // Paging
@@ -193,6 +218,7 @@ public static class GraphQlConfiguration
     public static class WellKnownSchemaNames
     {
         public const string Metabase = "metabase";
+        public const string Database = "database";
     }
 }
 
@@ -208,14 +234,16 @@ public partial class CustomFilterConvention : FilterConvention
         descriptor.AllowAnd();
         descriptor.AllowOr();
         // Bind custom types
-        descriptor.BindRuntimeType<GetHttpsResource, GetHttpsResourceFilterType>();
-        descriptor.BindRuntimeType<NamedMethodArgument, NamedMethodArgumentFilterType>();
         descriptor.BindRuntimeType<CalorimetricData, CalorimetricDataFilterType>();
-        descriptor.BindRuntimeType<IData, DataFilterType>();
-        descriptor.BindRuntimeType<HygrothermalData, HygrothermalDataFilterType>();
-        descriptor.BindRuntimeType<OpticalData, OpticalDataFilterType>();
         descriptor.BindRuntimeType<GeometricData, GeometricDataFilterType>();
+        descriptor.BindRuntimeType<GetHttpsResource, GetHttpsResourceFilterType>();
+        descriptor.BindRuntimeType<HygrothermalData, HygrothermalDataFilterType>();
+        descriptor.BindRuntimeType<IData, DataFilterType>();
+        descriptor.BindRuntimeType<NamedMethodArgument, NamedMethodArgumentFilterType>();
+        descriptor.BindRuntimeType<OpticalData, OpticalDataFilterType>();
         descriptor.BindRuntimeType<PhotovoltaicData, PhotovoltaicDataFilterType>();
+        descriptor.BindRuntimeType<Publication, PublicationFilterType>();
+        descriptor.BindRuntimeType<Reference, ReferenceFilterType>();
     }
 
     // TODO Overriding and changing type names in this way is _super_ error-prone. However, using `descriptor.Configure<...FilterInputType<T>>(x => x.Name(name))` does not work. Why?
@@ -386,13 +414,15 @@ public partial class CustomSortConvention : SortConvention
     {
         descriptor.AddDefaults();
         // Bind custom types
-        descriptor.BindRuntimeType<GetHttpsResource, GetHttpsResourceSortType>();
-        descriptor.BindRuntimeType<NamedMethodArgument, NamedMethodArgumentSortType>();
         descriptor.BindRuntimeType<CalorimetricData, CalorimetricDataSortType>();
-        descriptor.BindRuntimeType<IData, DataSortType>();
-        descriptor.BindRuntimeType<HygrothermalData, HygrothermalDataSortType>();
-        descriptor.BindRuntimeType<OpticalData, OpticalDataSortType>();
         descriptor.BindRuntimeType<GeometricData, GeometricDataSortType>();
+        descriptor.BindRuntimeType<GetHttpsResource, GetHttpsResourceSortType>();
+        descriptor.BindRuntimeType<HygrothermalData, HygrothermalDataSortType>();
+        descriptor.BindRuntimeType<IData, DataSortType>();
+        descriptor.BindRuntimeType<NamedMethodArgument, NamedMethodArgumentSortType>();
+        descriptor.BindRuntimeType<OpticalData, OpticalDataSortType>();
         descriptor.BindRuntimeType<PhotovoltaicData, PhotovoltaicDataSortType>();
+        descriptor.BindRuntimeType<Publication, PublicationSortType>();
+        descriptor.BindRuntimeType<Reference, ReferenceSortType>();
     }
 }

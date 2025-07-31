@@ -18,4 +18,12 @@ public sealed class CreateHygrothermalDataPayload
         : base(error)
     {
     }
+
+    public CreateHygrothermalDataPayload(
+        HygrothermalData hygrothermalData,
+        CreateHygrothermalDataError error
+    )
+        : base(hygrothermalData, error)
+    {
+    }
 }

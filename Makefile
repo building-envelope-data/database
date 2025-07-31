@@ -8,7 +8,7 @@ docker_compose = \
 		--file docker-compose.yml \
 		--project-name ${NAME}
 
-database_name = xbase_development
+database_name = xbase
 
 # Taken from https://www.client9.com/self-documenting-makefiles/
 help : ## Print this help
@@ -26,22 +26,52 @@ name : ## Print value of variable `NAME`
 # Interface with Docker Compose #
 # ----------------------------- #
 
+config : ## Parse, resolve and render compose file in canonical format
+	COMPOSE_BAKE=true \
+		COMPOSE_DOCKER_CLI_BUILD=1 \
+			DOCKER_BUILDKIT=1 \
+				${docker_compose} config
+.PHONY : config
+
+check : ## Check build configuration
+	COMPOSE_BAKE=true \
+		COMPOSE_DOCKER_CLI_BUILD=1 \
+			DOCKER_BUILDKIT=1 \
+				${docker_compose} build \
+					--check \
+					--build-arg GROUP_ID=$(shell id --group) \
+					--build-arg USER_ID=$(shell id --user)
+.PHONY : check
+
 pull : ## Pull images
-	COMPOSE_DOCKER_CLI_BUILD=1 \
-		DOCKER_BUILDKIT=1 \
-			${docker_compose} pull
+	COMPOSE_BAKE=true \
+		COMPOSE_DOCKER_CLI_BUILD=1 \
+			DOCKER_BUILDKIT=1 \
+				${docker_compose} pull
 .PHONY : pull
 
 # To debug errors during build add `--progress plain \` to get additional
 # output.
 build : pull ## Build images
-	COMPOSE_DOCKER_CLI_BUILD=1 \
-		DOCKER_BUILDKIT=1 \
-			${docker_compose} build \
-				--pull \
-				--build-arg GROUP_ID=$(shell id --group) \
-				--build-arg USER_ID=$(shell id --user)
+	COMPOSE_BAKE=true \
+		COMPOSE_DOCKER_CLI_BUILD=1 \
+			DOCKER_BUILDKIT=1 \
+				${docker_compose} build \
+					--pull \
+					--build-arg GROUP_ID=$(shell id --group) \
+					--build-arg USER_ID=$(shell id --user)
 .PHONY : build
+
+bake : ## Print docker-compose file equivalent bake file
+	COMPOSE_BAKE=true \
+		COMPOSE_DOCKER_CLI_BUILD=1 \
+			DOCKER_BUILDKIT=1 \
+				${docker_compose} build \
+					--print \
+					--pull \
+					--build-arg GROUP_ID=$(shell id --group) \
+					--build-arg USER_ID=$(shell id --user)
+.PHONY : bake
 
 backend-build-context : ## Show the build context configured by `./backend/.dockerignore`
 	DOCKER_BUILDKIT=1 \
@@ -80,18 +110,24 @@ up : build ## (Re)create, and start containers (after building images if necessa
 		--detach
 .PHONY : up
 
-down : ## Stop containers and remove containers, networks, volumes, and images created by `up`
+down : ## Stop containers and remove containers and networks created by `up` and clear backend logs
 	${docker_compose} down \
 		--remove-orphans
+	-rm ./backend/src/logs/*
 .PHONY : down
 
 restart : ## Restart all stopped and running containers
 	${docker_compose} restart
 .PHONY : restart
 
+prune : ## Remove all unused containers, unused networks, unused and dangling images, and unused anonymous volumes
+	docker system prune \
+		--volumes
+.PHONY : prune
+
 logs : ## Follow logs
 	${docker_compose} logs \
-		--since=24h \
+		--since=1h \
 		--follow
 .PHONY : logs
 
@@ -174,7 +210,7 @@ list : ## List all containers with health status
 .PHONY : list
 
 createdb : DBNAME = ${database_name}
-createdb : ## Create database with name `${DBNAME}` defaulting to `xbase_development`
+createdb : ## Create database with name `${DBNAME}` defaulting to `xbase`
 	${docker_compose} exec \
 		database \
 		bash -c " \
@@ -183,7 +219,7 @@ createdb : ## Create database with name `${DBNAME}` defaulting to `xbase_develop
 .PHONY : createdb
 
 dropdb : DBNAME = ${database_name}
-dropdb : ## Drop database with name `${DBNAME}` defaulting to `xbase_development`
+dropdb : ## Drop database with name `${DBNAME}` defaulting to `xbase`
 	${docker_compose} exec \
 		database \
 		bash -c " \
@@ -219,6 +255,33 @@ prepare-release : ## Prepare release
 		backend \
 		make prepare-release
 .PHONY : prepare-release
+
+gpg : COMMENT =
+gpg : ## Generate GnuPG key with the passphrase `${GNUPG_PRIVATEKEY_PASSPHRASE}`, for example, `make NAME="Simon Wacker" COMMENT=solarbuildingenvelopes EMAIL=simon.wacker@ise.fraunhofer.de gpg`
+	gpg \
+		--quick-generate-key \
+		--pinentry-mode loopback \
+		--batch \
+		--passphrase ${GNUPG_PRIVATEKEY_PASSPHRASE} \
+		"${NAME} (${COMMENT}) <${EMAIL}>" \
+		ed25519 \
+		sign \
+		never
+	fingerprint=gpg \
+		--list-secret-keys \
+		--with-colons \
+		--keyid-format=long \
+		${EMAIL} \
+	| grep \
+		--before=3 \
+		"${NAME} (${COMMENT}) <${EMAIL}>" \
+	| awk -F: '$$1=="fpr" {printf $$10; exit}'
+	mkdir --parents \
+		./backend/src/gpg-keys
+	gpg \
+		--armor \
+		--export-secret-keys $$fingerprint \
+	> ./backend/src/gpg-keys/${GNUPG_PRIVATEKEY_FILE_NAME}
 
 # --------------------- #
 # Generate Certificates #
@@ -266,7 +329,7 @@ generate-certificate-authority : ## Generate certificate authority ECDSA private
 		--rm \
 		--user $(shell id --user):$(shell id --group) \
 		--mount type=bind,source="$(shell pwd)/ssl",target=/ssl \
-		nginx:1.25-bookworm \
+		nginx:1.27-bookworm \
 		bash -cx " \
 			echo \"# Generate the elliptic curve (EC) private key '/ssl/${CERTIFICATE_AUTHORITY_BASE_FILE_NAME}.key' with parameters 'secp384r1', that is, a NIST/SECG curve over a 384 bit prime field as said in the output of the command 'openssl ecparam -list_curves'\" && \
 			openssl ecparam \
@@ -374,7 +437,7 @@ generate-ssl-certificate : ## Generate ECDSA private key and SSL certificate sig
 		--rm \
 		--user $(shell id --user):$(shell id --group) \
 		--mount type=bind,source="$(shell pwd)/ssl",target=/ssl \
-		nginx:1.25-bookworm \
+		nginx:1.27-bookworm \
 		bash -cx " \
 			echo \"# Generate the elliptic curve (EC) private key '/ssl/${SSL_CERTIFICATE_BASE_FILE_NAME}.key' with parameters 'secp384r1', that is, a NIST/SECG curve over a 384 bit prime field as said in the output of the command 'openssl ecparam -list_curves'\" && \
 			openssl ecparam \

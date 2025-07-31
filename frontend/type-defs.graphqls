@@ -5,12 +5,17 @@ schema {
 
 interface Data {
   appliedMethod: AppliedMethod!
+  approval: ResponseApproval
   approvals: [DataApproval!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
+  dataAccessRights: DataAccessRights!
   databaseId: Uuid!
   description: String
+  isRestrictedByApplication(applicationId: String!): Boolean!
+  isRestrictedByInstitutions(institutions: [Uuid!]!): Boolean!
+  isRestrictedByUser(alreadyAccesedCount: NonNegativeInt! uuid: Uuid!): Boolean!
   locale: Locale!
   name: String
   resources: [GetHttpsResource!]!
@@ -25,10 +30,22 @@ interface Node {
   id: ID!
 }
 
-interface Reference {
-  abstract: String
-  section: String
-  title: String
+type AddDataApprovalError {
+  code: AddDataApprovalErrorCode!
+  message: String!
+  path: [String!]!
+}
+
+type AddDataApprovalPayload {
+  dataApproval: DataApproval
+  errors: [AddDataApprovalError!]
+  query: Query!
+}
+
+type AddInstitutionAccessRightsPayload {
+  accessRights: InstitutionAccessRights
+  errors: [InstitutionAccessRightsError!]
+  query: Query!
 }
 
 type Address {
@@ -43,14 +60,19 @@ type AppliedMethod {
 
 type CalorimetricData implements Node & Data {
   appliedMethod: AppliedMethod!
+  approval: ResponseApproval
   approvals: [DataApproval!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
+  dataAccessRights: DataAccessRights!
   databaseId: Uuid!
   description: String
   gValues: [Float!]!
   id: ID!
+  isRestrictedByApplication(applicationId: String!): Boolean!
+  isRestrictedByInstitutions(institutions: [Uuid!]!): Boolean!
+  isRestrictedByUser(alreadyAccesedCount: NonNegativeInt! uuid: Uuid!): Boolean!
   locale: Locale!
   name: String
   resources: [GetHttpsResource!]! @cost(weight: "10")
@@ -83,6 +105,21 @@ type CielabColor {
   aStar: Float!
   bStar: Float!
   lStar: Float!
+}
+
+type ColorReflectance {
+  cielabColors: [MethodAsServiceCielabColor!]!
+}
+
+type ColorRenderingIndex {
+  illuminant: String!
+  observer: String!
+  ra: Int!
+}
+
+type ColorTransmittance {
+  cielabColors: [MethodAsServiceCielabColor!]!
+  colorRenderingIndices: [ColorRenderingIndex!]!
 }
 
 type CreateCalorimetricDataError {
@@ -157,11 +194,33 @@ type CreatePhotovoltaicDataPayload {
   query: Query!
 }
 
+type CreateResponseApprovalsError {
+  code: CreateResponseApprovalsErrorCode!
+  message: String!
+  path: [String!]!
+}
+
+type CreateResponseApprovalsPayload {
+  data: [Data!]
+  errors: [CreateResponseApprovalsError!]
+  query: Query!
+}
+
 type CrossDatabaseDataReference {
   databaseId: Uuid!
   dataId: Uuid!
   dataKind: DataKind!
   dataTimestamp: DateTime!
+}
+
+type DataAccessRights {
+  allowedApplications: [String!]
+  allowedInstitutions: [Uuid!]
+  allowedUserAndQuantity: [KeyValuePairOfGuidAndNullableOfUInt32!]
+  hasRestrictions: Boolean!
+  isRestrictedByApplication: Boolean!
+  isRestrictedByInstitution: Boolean!
+  isRestrictedByUser: Boolean!
 }
 
 type DataApproval {
@@ -170,7 +229,7 @@ type DataApproval {
   query: String!
   response: String!
   signature: String!
-  statement: Reference
+  statement: Reference @cost(weight: "10")
   timestamp: DateTime!
 }
 
@@ -185,6 +244,12 @@ type DataEdge {
   node: Data!
 }
 
+type DataPoint {
+  emergence: Emergence!
+  incidence: Incidence!
+  results: Results!
+}
+
 type Database {
   canCurrentUserUpdateNode: Boolean!
   canCurrentUserVerifyNode: Boolean!
@@ -196,6 +261,14 @@ type Database {
   verificationState: DatabaseVerificationState!
 }
 
+type Direction {
+  polar: Int!
+}
+
+type Emergence {
+  direction: Direction!
+}
+
 type FileMetaInformation {
   dataFormatId: Uuid!
   path: [String!]!
@@ -203,13 +276,18 @@ type FileMetaInformation {
 
 type GeometricData implements Node & Data {
   appliedMethod: AppliedMethod!
+  approval: ResponseApproval
   approvals: [DataApproval!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
+  dataAccessRights: DataAccessRights!
   databaseId: Uuid!
   description: String
   id: ID!
+  isRestrictedByApplication(applicationId: String!): Boolean!
+  isRestrictedByInstitutions(institutions: [Uuid!]!): Boolean!
+  isRestrictedByUser(alreadyAccesedCount: NonNegativeInt! uuid: Uuid!): Boolean!
   locale: Locale!
   name: String
   resources: [GetHttpsResource!]! @cost(weight: "10")
@@ -244,7 +322,7 @@ type GetHttpsResource implements Node {
   children: [GetHttpsResource!]! @cost(weight: "10")
   data: Data @cost(weight: "10")
   dataFormatId: Uuid!
-  description: String!
+  description: String
   hashValue: String!
   id: ID!
   locator: Url!
@@ -289,13 +367,18 @@ type GetHttpsResourceTreeRoot {
 
 type HygrothermalData implements Node & Data {
   appliedMethod: AppliedMethod!
+  approval: ResponseApproval
   approvals: [DataApproval!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
+  dataAccessRights: DataAccessRights!
   databaseId: Uuid!
   description: String
   id: ID!
+  isRestrictedByApplication(applicationId: String!): Boolean!
+  isRestrictedByInstitutions(institutions: [Uuid!]!): Boolean!
+  isRestrictedByUser(alreadyAccesedCount: NonNegativeInt! uuid: Uuid!): Boolean!
   locale: Locale!
   name: String
   resources: [GetHttpsResource!]! @cost(weight: "10")
@@ -323,14 +406,65 @@ type HygrothermalDataEdge {
   node: HygrothermalData!
 }
 
+type Incidence {
+  direction: Direction!
+  wavelengths: Wavelengths!
+}
+
+type InstitutionAccessRights {
+  allowedDatasetsPerTime: NonNegativeInt
+  allowedUserCount: NonNegativeInt
+  id: Uuid!
+  institutionId: Uuid!
+  period: TimeSpan!
+  userAlreadyAccessed: [Uuid!]!
+  version: NonNegativeInt!
+}
+
+type InstitutionAccessRightsError {
+  code: InstitutionAccessRightsErrorCode!
+  message: String!
+  path: [String!]!
+}
+
+type KeyValuePairOfGuidAndNullableOfUInt32 {
+  key: Uuid!
+  value: NonNegativeInt
+}
+
+type MethodAsServiceCielabColor {
+  aStar: Float!
+  bStar: Float!
+  illuminant: String!
+  lStar: Int!
+  observer: String!
+}
+
+type MethodAsServiceError {
+  code: MethodAsServiceErrorCode!
+  message: String!
+  path: [String!]!
+}
+
+type MethodAsServicePayload {
+  calculationResult: [DataPoint!]
+  errors: [MethodAsServiceError!]
+}
+
 type Mutation {
+  addAccessRights(input: InstitutionAccessRightsInput!): AddInstitutionAccessRightsPayload! @cost(weight: "10")
+  addDataApproval(input: DataApprovalInput!): AddDataApprovalPayload! @cost(weight: "10")
   createCalorimetricData(input: CreateCalorimetricDataInput!): CreateCalorimetricDataPayload! @cost(weight: "10")
   createGeometricData(input: CreateGeometricDataInput!): CreateGeometricDataPayload! @cost(weight: "10")
   createGetHttpsResource(input: CreateGetHttpsResourceInput!): CreateGetHttpsResourcePayload! @cost(weight: "10")
   createHygrothermalData(input: CreateHygrothermalDataInput!): CreateHygrothermalDataPayload! @cost(weight: "10")
   createOpticalData(input: CreateOpticalDataInput!): CreateOpticalDataPayload! @cost(weight: "10")
   createPhotovoltaicData(input: CreatePhotovoltaicDataInput!): CreatePhotovoltaicDataPayload! @cost(weight: "10")
+  createResponseApprovals: CreateResponseApprovalsPayload! @cost(weight: "10")
+  updateAccessRights(input: InstitutionAccessRightsInput!): UpdateAccessRightsPayload! @cost(weight: "10")
+  updateDataAccessRights(input: DataAccessRightsInput!): UpdateDataAccessRightsPayload! @cost(weight: "10")
   updateDatabase(input: UpdateDatabaseInput!): UpdateDatabasePayload! @cost(weight: "10")
+  updateResponseApprovals: UpdateResponseApprovalsPayload! @cost(weight: "10")
 }
 
 type NamedMethodArgument {
@@ -356,6 +490,7 @@ type OpenEndedDateTimeRange {
 
 type OpticalData implements Node & Data {
   appliedMethod: AppliedMethod!
+  approval: ResponseApproval
   approvals: [DataApproval!]!
   cielabColors: [CielabColor!]!
   coatedSide: CoatedSide
@@ -363,10 +498,14 @@ type OpticalData implements Node & Data {
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
+  dataAccessRights: DataAccessRights!
   databaseId: Uuid!
   description: String
   id: ID!
   infraredEmittances: [Float!]!
+  isRestrictedByApplication(applicationId: String!): Boolean!
+  isRestrictedByInstitutions(institutions: [Uuid!]!): Boolean!
+  isRestrictedByUser(alreadyAccesedCount: NonNegativeInt! uuid: Uuid!): Boolean!
   locale: Locale!
   name: String
   nearnormalHemisphericalSolarReflectances: [Float!]!
@@ -414,13 +553,18 @@ type PageInfo {
 
 type PhotovoltaicData implements Node & Data {
   appliedMethod: AppliedMethod!
+  approval: ResponseApproval
   approvals: [DataApproval!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
+  dataAccessRights: DataAccessRights!
   databaseId: Uuid!
   description: String
   id: ID!
+  isRestrictedByApplication(applicationId: String!): Boolean!
+  isRestrictedByInstitutions(institutions: [Uuid!]!): Boolean!
+  isRestrictedByUser(alreadyAccesedCount: NonNegativeInt! uuid: Uuid!): Boolean!
   locale: Locale!
   name: String
   resources: [GetHttpsResource!]! @cost(weight: "10")
@@ -448,7 +592,7 @@ type PhotovoltaicDataEdge {
   node: PhotovoltaicData!
 }
 
-type Publication implements Reference {
+type Publication {
   abstract: String
   "The website arXiv.org is a free and open-access archive for publications. The arXiv identifier can be used to define a publication."
   arXiv: String
@@ -473,11 +617,14 @@ type Query {
   calorimetricData(id: Uuid! locale: Locale): CalorimetricData @cost(weight: "10")
   currentUser: User @cost(weight: "10")
   currentUserInfo: UserInfo @cost(weight: "10")
+  data(id: Uuid! locale: Locale): Data @cost(weight: "10")
   database: Database! @cost(weight: "10")
   geometricData(id: Uuid! locale: Locale): GeometricData @cost(weight: "10")
   getHttpsResource(id: Uuid!): GetHttpsResource @cost(weight: "10")
   getHttpsResources("Returns the elements in the list that come after the specified cursor." after: String "Returns the elements in the list that come before the specified cursor." before: String "Returns the first _n_ elements from the list." first: Int "Returns the last _n_ elements from the list." last: Int order: [GetHttpsResourceSortInput!] @cost(weight: "10") where: GetHttpsResourcePropositionInput @cost(weight: "10")): GetHttpsResourceConnection @listSize(assumedSize: 100, slicingArguments: [ "first", "last" ], slicingArgumentDefaultValue: 100, sizedFields: [ "edges", "nodes" ], requireOneSlicingArgument: false) @cost(weight: "10")
   hygrothermalData(id: Uuid! locale: Locale): HygrothermalData @cost(weight: "10")
+  methodAsService(input: MethodAsServiceInput!): MethodAsServicePayload! @cost(weight: "10")
+  methodAsServiceWithFile(input: MethodAsServiceWithFileInput!): MethodAsServicePayload! @cost(weight: "10")
   "Fetches an object given its ID."
   node("ID of the object." id: ID!): Node @cost(weight: "10")
   "Lookup nodes by a list of IDs."
@@ -487,8 +634,23 @@ type Query {
   verificationCode: String!
 }
 
+type ResponseApproval {
+  keyFingerprint: String!
+  query: String!
+  response: String!
+  signature: String!
+  timestamp: DateTime!
+}
+
+type Results {
+  colorReflectance: ColorReflectance
+  colorTransmittance: ColorTransmittance
+  reflectance: Float
+  transmittance: Float!
+}
+
 "`ISO 52022` is an example of the abbreviation of a standardizer and the main number of the identifier."
-type Standard implements Reference {
+type Standard {
   abstract: String
   locator: Url
   numeration: Numeration!
@@ -506,6 +668,24 @@ type ToTreeVertexAppliedConversionMethod {
   sourceName: String!
 }
 
+type UpdateAccessRightsPayload {
+  accessRights: InstitutionAccessRights
+  errors: [InstitutionAccessRightsError!]
+  query: Query!
+}
+
+type UpdateDataAccessRightsError {
+  code: UpdateDataAccessRightsErrorCode!
+  message: String!
+  path: [String!]!
+}
+
+type UpdateDataAccessRightsPayload {
+  dataAccessRights: DataAccessRights
+  errors: [UpdateDataAccessRightsError!]
+  query: Query!
+}
+
 type UpdateDatabaseError {
   code: UpdateDatabaseErrorCode!
   message: String!
@@ -515,6 +695,18 @@ type UpdateDatabaseError {
 type UpdateDatabasePayload {
   database: Database
   errors: [UpdateDatabaseError!]
+  query: Query!
+}
+
+type UpdateResponseApprovalsError {
+  code: UpdateResponseApprovalsErrorCode!
+  message: String!
+  path: [String!]!
+}
+
+type UpdateResponseApprovalsPayload {
+  data: [Data!]
+  errors: [UpdateResponseApprovalsError!]
   query: Query!
 }
 
@@ -536,6 +728,12 @@ type UserInfo {
   sub: String!
   website: String
 }
+
+type Wavelengths {
+  wavelength: Int!
+}
+
+union Reference = Publication | Standard
 
 input AppliedMethodInput {
   arguments: [NamedMethodArgumentInput!]!
@@ -605,7 +803,6 @@ input CielabColorPropositionInput {
 
 input CreateCalorimetricDataInput {
   appliedMethod: AppliedMethodInput!
-  approvals: [DataApprovalInput!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
@@ -620,7 +817,6 @@ input CreateCalorimetricDataInput {
 
 input CreateGeometricDataInput {
   appliedMethod: AppliedMethodInput!
-  approvals: [DataApprovalInput!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
@@ -645,7 +841,6 @@ input CreateGetHttpsResourceInput {
 
 input CreateHygrothermalDataInput {
   appliedMethod: AppliedMethodInput!
-  approvals: [DataApprovalInput!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
@@ -664,7 +859,6 @@ input CreateNumerationInput {
 
 input CreateOpticalDataInput {
   appliedMethod: AppliedMethodInput!
-  approvals: [DataApprovalInput!]!
   cielabColors: [CielabColorInput!]!
   coatedSide: CoatedSide
   colorRenderingIndices: [Float!]!
@@ -687,7 +881,6 @@ input CreateOpticalDataInput {
 
 input CreatePhotovoltaicDataInput {
   appliedMethod: AppliedMethodInput!
-  approvals: [DataApprovalInput!]!
   componentId: Uuid!
   createdAt: DateTime!
   creatorId: Uuid!
@@ -696,27 +889,6 @@ input CreatePhotovoltaicDataInput {
   name: String
   rootResource: RootGetHttpsResourceInput!
   warnings: [String!]!
-}
-
-input CreatePublicationInput {
-  abstract: String
-  arXiv: String
-  authors: [String!]
-  doi: String
-  section: String
-  title: String
-  urn: String
-  webAddress: Url
-}
-
-input CreateStandardInput {
-  abstract: String
-  locator: Url
-  numeration: CreateNumerationInput!
-  section: String
-  standardizers: [Standardizer!]!
-  title: String
-  year: Int
 }
 
 input CrossDatabaseDataReferenceInput {
@@ -735,14 +907,21 @@ input CrossDatabaseDataReferencePropositionInput {
   databaseId: UuidPropositionInput
 }
 
+input DataAccessRightsInput {
+  allowedApplications: [String!]
+  allowedInstitutions: [Uuid!]
+  allowedUserAndQuantity: [KeyValuePairOfGuidAndNullableOfUInt32Input!]
+  dataId: Uuid!
+}
+
 input DataApprovalInput {
   approverId: Uuid!
+  dataId: Uuid!
   keyFingerprint: String!
-  publication: CreatePublicationInput
   query: String!
   response: String!
   signature: String!
-  standard: CreateStandardInput
+  statement: ReferenceInput!
   timestamp: DateTime!
 }
 
@@ -755,9 +934,7 @@ input DataApprovalPropositionInput {
   keyFingerprint: StringPropositionInput
   query: StringPropositionInput
   response: StringPropositionInput
-  publication: PublicationPropositionInput
-  standard: StandardPropositionInput
-  statement: IReferencePropositionInput
+  statement: ReferencePropositionInput
 }
 
 input DataKindPropositionInput {
@@ -919,12 +1096,11 @@ input IDataSortInput {
   appliedMethod: AppliedMethodSortInput @cost(weight: "10")
 }
 
-input IReferencePropositionInput {
-  and: [IReferencePropositionInput!]
-  or: [IReferencePropositionInput!]
-  title: StringPropositionInput
-  abstract: StringPropositionInput
-  section: StringPropositionInput
+input InstitutionAccessRightsInput {
+  allowedDatasetsPerTimeSpan: NonNegativeInt
+  allowedUserCount: NonNegativeInt
+  institutionId: Uuid!
+  periodInDays: Int!
 }
 
 input Int32PropositionInput {
@@ -940,6 +1116,11 @@ input Int32PropositionInput {
   notLessThan: Int @cost(weight: "10")
   lessThanOrEqualTo: Int @cost(weight: "10")
   notLessThanOrEqualTo: Int @cost(weight: "10")
+}
+
+input KeyValuePairOfGuidAndNullableOfUInt32Input {
+  key: Uuid!
+  value: NonNegativeInt
 }
 
 input ListFilterInputTypeOfCielabColorPropositionInput {
@@ -989,6 +1170,17 @@ input ListStandardizerPropositionInput {
   none: StandardizerPropositionInput @cost(weight: "10")
   some: StandardizerPropositionInput @cost(weight: "10")
   any: Boolean @cost(weight: "10")
+}
+
+input MethodAsServiceInput {
+  databaseId: Uuid!
+  dataId: Uuid!
+  methodId: Uuid!
+}
+
+input MethodAsServiceWithFileInput {
+  file: Upload!
+  methodId: Uuid!
 }
 
 input NamedMethodArgumentInput {
@@ -1122,6 +1314,17 @@ input PhotovoltaicDataSortInput {
   id: SortEnumType @cost(weight: "10")
 }
 
+input PublicationInput {
+  abstract: String
+  arXiv: String
+  authors: [String!]
+  doi: String
+  section: String
+  title: String
+  urn: String
+  webAddress: Url
+}
+
 input PublicationPropositionInput {
   and: [PublicationPropositionInput!]
   or: [PublicationPropositionInput!]
@@ -1140,12 +1343,34 @@ input PublicationPropositionInput {
   section: StringPropositionInput
 }
 
+input ReferenceInput {
+  publication: PublicationInput
+  standard: StandardInput
+}
+
+input ReferencePropositionInput {
+  and: [ReferencePropositionInput!]
+  or: [ReferencePropositionInput!]
+  standard: StandardPropositionInput
+  publication: PublicationPropositionInput
+}
+
 input RootGetHttpsResourceInput {
   appliedConversionMethod: ToTreeVertexAppliedConversionMethodInput
   archivedFilesMetaInformation: [FileMetaInformationInput!]!
   dataFormatId: Uuid!
   description: String!
   hashValue: String!
+}
+
+input StandardInput {
+  abstract: String
+  locator: Url
+  numeration: CreateNumerationInput!
+  section: String
+  standardizers: [Standardizer!]!
+  title: String
+  year: Int
 }
 
 "`ISO 52022` is an example of the abbreviation of a standardizer and the main number of the identifier."
@@ -1267,6 +1492,17 @@ input UuidPropositionInput {
   notLessThanOrEqualTo: Uuid @cost(weight: "10")
 }
 
+enum AddDataApprovalErrorCode {
+  UNKNOWN
+  UNAUTHENTICATED
+  UNAUTHORIZED
+  UNKNOWN_DATA
+  UNKNOWN_DATABASE
+  CREATING_RESPONSE_APPROVAL_FAILED
+  AMBIGUOUS_STATEMENT
+  MISSING_STATEMENT
+}
+
 "Defines when a policy shall be executed."
 enum ApplyPolicy {
   "Before the resolver was executed."
@@ -1287,32 +1523,51 @@ enum CoatedSide {
 enum CreateCalorimetricDataErrorCode {
   UNKNOWN
   UNAUTHORIZED
+  UNAUTHENTICATED
+  CREATING_RESPONSE_APPROVAL_FAILED
 }
 
 enum CreateGeometricDataErrorCode {
   UNKNOWN
   UNAUTHORIZED
+  UNAUTHENTICATED
+  CREATING_RESPONSE_APPROVAL_FAILED
 }
 
 enum CreateGetHttpsResourceErrorCode {
   UNKNOWN
   UNKNOWN_DATA
   UNAUTHORIZED
+  UNAUTHENTICATED
 }
 
 enum CreateHygrothermalDataErrorCode {
   UNKNOWN
   UNAUTHORIZED
+  UNAUTHENTICATED
+  CREATING_RESPONSE_APPROVAL_FAILED
 }
 
 enum CreateOpticalDataErrorCode {
   UNKNOWN
   UNAUTHORIZED
+  UNAUTHENTICATED
+  CREATING_RESPONSE_APPROVAL_FAILED
 }
 
 enum CreatePhotovoltaicDataErrorCode {
   UNKNOWN
   UNAUTHORIZED
+  UNAUTHENTICATED
+  CREATING_RESPONSE_APPROVAL_FAILED
+}
+
+enum CreateResponseApprovalsErrorCode {
+  UNKNOWN
+  UNAUTHORIZED
+  UNAUTHENTICATED
+  UNKNOWN_DATABASE
+  CREATING_RESPONSE_APPROVAL_FAILED
 }
 
 enum DataKind {
@@ -1326,6 +1581,19 @@ enum DataKind {
 enum DatabaseVerificationState {
   PENDING
   VERIFIED
+}
+
+enum InstitutionAccessRightsErrorCode {
+  UNKNOWN
+  UNAUTHENTICATED
+  UNAUTHORIZED
+  ALREADY_EXISTS
+  UNKNOWN_ACCESS_RIGHTS
+}
+
+enum MethodAsServiceErrorCode {
+  UNKNOWN_METHOD
+  UNKNOWN_DATABASE
 }
 
 enum OpticalComponentSubtype {
@@ -1390,10 +1658,25 @@ enum Standardizer {
   WELL
 }
 
+enum UpdateDataAccessRightsErrorCode {
+  UNKNOWN
+  UNAUTHENTICATED
+  UNAUTHORIZED
+  UNKNOWN_DATA
+}
+
 enum UpdateDatabaseErrorCode {
   UNKNOWN
   UNAUTHORIZED
   UNKNOWN_DATABASE
+}
+
+enum UpdateResponseApprovalsErrorCode {
+  UNKNOWN
+  UNAUTHORIZED
+  UNAUTHENTICATED
+  UNKNOWN_DATABASE
+  UPDATING_RESPONSE_APPROVAL_FAILED
 }
 
 enum UriHostNameType {
@@ -1423,6 +1706,12 @@ scalar Locale
 
 "The NonNegativeInt scalar type represents a unsigned 32-bit numeric non-fractional value equal to or greater than 0."
 scalar NonNegativeInt
+
+"The `TimeSpan` scalar represents an ISO-8601 compliant duration type."
+scalar TimeSpan
+
+"The `Upload` scalar type represents a file upload."
+scalar Upload
 
 scalar Url
 

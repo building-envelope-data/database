@@ -1,16 +1,12 @@
+using System;
 using System.Linq;
-using System.Net.Http;
-using System.Security.Claims;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Database.Authorization;
 using Database.Data;
-using Database.Extensions;
-using HotChocolate;
+using Database.Services;
 using HotChocolate.Types;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 
 namespace Database.GraphQl.GeometricDataX;
 
@@ -18,24 +14,33 @@ namespace Database.GraphQl.GeometricDataX;
 public sealed class GeometricDataMutations
 {
     // [UseUserManager]
-    // [Authorize(Policy = Configuration.AuthConfiguration.WritePolicy)]
+    //[Authorize(Policy = Configuration.AuthConfiguration.WriteApiScope)]
     public async Task<CreateGeometricDataPayload> CreateGeometricDataAsync(
         CreateGeometricDataInput input,
         ApplicationDbContext context,
-        AppSettings appSettings,
-        IHttpClientFactory httpClientFactory,
-        IHttpContextAccessor httpContextAccessor,
+        UserService userService,
+        ResponseApprovalService responseApprovalService,
         CancellationToken cancellationToken
     )
     {
-        if (!await GeometricDataAuthorization.IsAuthorizedToCreateGeometricDataForInstitution(
-             input.CreatorId,
-             appSettings,
-             httpClientFactory,
-             httpContextAccessor,
-             cancellationToken
-             ).ConfigureAwait(false)
+        var currentUser = await userService.GetCurrentUser(cancellationToken).ConfigureAwait(false);
+        if (currentUser is null)
+        {
+            return new CreateGeometricDataPayload(
+                new CreateGeometricDataError(
+                    CreateGeometricDataErrorCode.UNAUTHENTICATED,
+                    $"The user is not authenticated.",
+                    []
+                )
+            );
+        }
+
+        if (!GeometricDataAuthorization.IsAuthorizedToCreateGeometricDataForInstitution(
+             currentUser,
+             input.CreatorId
+             )
         )
+        {
             return new CreateGeometricDataPayload(
                 new CreateGeometricDataError(
                     CreateGeometricDataErrorCode.UNAUTHORIZED,
@@ -43,6 +48,8 @@ public sealed class GeometricDataMutations
                     []
                 )
             );
+        }
+
         var geometricData = new GeometricData(
             input.Locale,
             input.ComponentId,
@@ -71,17 +78,6 @@ public sealed class GeometricDataMutations
                     ))
                     .ToList()
             ),
-            input.Approvals.Select(a =>
-                new DataApproval(
-                    a.Timestamp,
-                    a.Signature,
-                    a.KeyFingerprint,
-                    a.Query,
-                    a.Response,
-                    a.ApproverId
-                )
-            ).ToList(),
-            // approval: input.Approval,
             input.Thicknesses
         );
         var resource = new GetHttpsResource(
@@ -109,8 +105,30 @@ public sealed class GeometricDataMutations
                 )
         );
         geometricData.Resources.Add(resource);
+
         context.GeometricData.Add(geometricData);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            geometricData.Approval = await responseApprovalService.CreateResponseApproval(geometricData, cancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            context.Remove(geometricData);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            return new CreateGeometricDataPayload(
+                geometricData,
+                new CreateGeometricDataError(
+                    CreateGeometricDataErrorCode.CREATING_RESPONSE_APPROVAL_FAILED,
+                    $"Signing failed with message: {exception.Message}",
+                    []
+                )
+            );
+        }
+
         return new CreateGeometricDataPayload(geometricData);
     }
 }

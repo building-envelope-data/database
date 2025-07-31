@@ -16,8 +16,6 @@ public sealed class CalorimetricData
         Guid creatorId,
         DateTime createdAt,
         AppliedMethod appliedMethod,
-        ICollection<DataApproval> approvals,
-        // ResponseApproval approval
         double[] gValues,
         double[] uValues
     ) : base(
@@ -28,8 +26,7 @@ public sealed class CalorimetricData
         warnings,
         creatorId,
         createdAt,
-        appliedMethod,
-        approvals
+        appliedMethod
     )
     {
         GValues = gValues;
@@ -45,7 +42,6 @@ public sealed class CalorimetricData
         string[] warnings,
         Guid creatorId,
         DateTime createdAt,
-        // ResponseApproval approval
         double[] gValues,
         double[] uValues
     ) : base(
@@ -63,7 +59,7 @@ public sealed class CalorimetricData
     }
 
     [InverseProperty(nameof(GetHttpsResource.CalorimetricData))]
-    public override ICollection<GetHttpsResource> Resources { get; } = new List<GetHttpsResource>();
+    public override ICollection<GetHttpsResource> Resources { get; } = [];
 
     public double[] GValues { get; private set; }
     public double[] UValues { get; private set; }

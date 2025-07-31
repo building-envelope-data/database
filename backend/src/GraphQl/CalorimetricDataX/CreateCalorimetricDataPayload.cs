@@ -18,4 +18,12 @@ public sealed class CreateCalorimetricDataPayload
         : base(error)
     {
     }
+
+    public CreateCalorimetricDataPayload(
+        CalorimetricData calorimetricData,
+        CreateCalorimetricDataError error
+    )
+        : base(calorimetricData, error)
+    {
+    }
 }

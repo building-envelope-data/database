@@ -1,16 +1,15 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Net.Http;
-using HotChocolate.AspNetCore;
 using Database.Configuration;
 using Database.Data;
 using Database.Data.Extensions;
 using Database.Enumerations;
 using Database.Services;
-using Database.Metabase;
+using HotChocolate.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -24,9 +23,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Npgsql;
-using Serilog;
 using Microsoft.OpenApi;
+using Serilog;
 
 namespace Database;
 
@@ -63,6 +61,15 @@ public sealed class Startup(
         services.AddSingleton(_appSettings);
         services.AddSingleton(_environment);
         // services.AddDatabaseDeveloperPageExceptionFilter();
+        services.AddSingleton<SigningService>();
+        services.AddSingleton<CacheService>();
+        services.AddScoped<AccessRightsService>();
+        services.AddScoped<ApiRequestService>();
+        services.AddScoped<DataService>();
+        services.AddScoped<MethodCalculationService>();
+        services.AddScoped<ResponseApprovalService>();
+        services.AddScoped<UserService>();
+        services.AddScoped<DatabaseService>();
     }
 
     private static void ConfigureRequestResponseServices(IServiceCollection services)
@@ -122,7 +129,7 @@ public sealed class Startup(
 
     private void ConfigureMessageSenderServices(IServiceCollection services)
     {
-        services.AddTransient<IEmailSender>(serviceProvider =>
+        services.AddTransient<EmailSender>(serviceProvider =>
             new EmailSender(
                 _appSettings.Email.SmtpHost,
                 _appSettings.Email.SmtpPort,
@@ -169,10 +176,11 @@ public sealed class Startup(
                     .MapEnum<OpticalComponentSubtype>(ApplicationDbContext.OpticalComponentSubtypeTypeName, appSettings.Database.SchemaName)
                     .MapEnum<OpticalComponentType>(ApplicationDbContext.OpticalComponentTypeTypeName, appSettings.Database.SchemaName)
                     .MapEnum<Standardizer>(ApplicationDbContext.StandardizerTypeName, appSettings.Database.SchemaName)
-                    // .UseNodaTime();
+            // .UseNodaTime();
             )
             .UseSchemaName(appSettings.Database.SchemaName)
-            .UseOpenIddict();
+            .UseOpenIddict()
+            .UseProjectables();
         if (!environment.IsProduction())
         {
             options
@@ -211,10 +219,20 @@ public sealed class Startup(
     private static void ConfigureHttpClientServices(IServiceCollection services, IWebHostEnvironment environment)
     {
         services.AddHttpClient();
-        var metabasesHttpClientBuilder = services.AddHttpClient(QueryingMetabase.MetabaseHttpClient);
+        var metabaseHttpClientBuilder = services.AddHttpClient(ApiRequestService.MetabaseHttpClient);
         if (environment.IsDevelopment())
         {
-            metabasesHttpClientBuilder.ConfigurePrimaryHttpMessageHandler(_ =>
+            metabaseHttpClientBuilder.ConfigurePrimaryHttpMessageHandler(_ =>
+                new HttpClientHandler
+                {
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+                }
+            );
+        }
+        var databaseHttpClientBuilder = services.AddHttpClient(ApiRequestService.DatabaseHttpClient);
+        if (environment.IsDevelopment())
+        {
+            databaseHttpClientBuilder.ConfigurePrimaryHttpMessageHandler(_ =>
                 new HttpClientHandler
                 {
                     ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
@@ -246,7 +264,7 @@ public sealed class Startup(
             // app.UseHsts(); // Done by NGINX, see https://www.nginx.com/blog/http-strict-transport-security-hsts-and-nginx/
         }
 
-        // app.UseStatusCodePages();
+        app.UseStatusCodePages(); // [UseStatusCodePages](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling?view=aspnetcore-9.0#usestatuscodepages)
         // app.UseHttpsRedirection(); // Done by NGINX
         app.UseSerilogRequestLogging();
         app.UseStaticFiles();

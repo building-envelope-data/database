@@ -1,15 +1,14 @@
-# syntax=docker/dockerfile:1.6
-# The above line fixes the Dockerfile frontend used by BuildKit. For details
+# syntax=docker/dockerfile:1.17
+# check=error=true
+# The first line fixes the Dockerfile frontend used by BuildKit. For details
 # see https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/reference.md
 # Available versions are listed on https://hub.docker.com/r/docker/dockerfile
 
 # Inspired by https://mherman.org/blog/dockerizing-a-react-app/
 
 # https://hub.docker.com/_/node
-FROM node:22.11-bookworm-slim
+FROM node:22.14-bookworm-slim
 
-ARG GROUP_ID
-ARG USER_ID
 ARG CERTIFICATE_AUTHORITY_BASE_FILE_NAME
 
 # TODO directory node_modules is created on host machine when container is run
@@ -30,9 +29,9 @@ RUN \
     --assume-yes \
     --no-install-recommends \
     ca-certificates \
-    dumb-init \
     make \
     openssl \
+    tini \
     wget && \
   rm \
     --recursive \
@@ -70,4 +69,4 @@ RUN \
   yarn install \
     --pure-lockfile
 
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--"]

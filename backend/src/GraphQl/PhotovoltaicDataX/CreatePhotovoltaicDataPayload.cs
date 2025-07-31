@@ -18,4 +18,12 @@ public sealed class CreatePhotovoltaicDataPayload
         : base(error)
     {
     }
+
+    public CreatePhotovoltaicDataPayload(
+        PhotovoltaicData photovoltaicData,
+        CreatePhotovoltaicDataError error
+    )
+        : base(photovoltaicData, error)
+    {
+    }
 }

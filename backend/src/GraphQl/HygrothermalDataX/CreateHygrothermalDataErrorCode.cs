@@ -1,7 +1,12 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Database.GraphQl.HygrothermalDataX;
 
+[SuppressMessage("Naming", "CA1707")]
 public enum CreateHygrothermalDataErrorCode
 {
     UNKNOWN,
-    UNAUTHORIZED
+    UNAUTHORIZED,
+    UNAUTHENTICATED,
+    CREATING_RESPONSE_APPROVAL_FAILED
 }

@@ -1,0 +1,26 @@
+mutation UpdateDatabase(
+    $input: UpdateDatabaseInput!
+) {
+    updateDatabase(input: $input) {
+        database {
+            uuid
+            name
+            description
+            locator
+            verificationState
+            verificationCode
+            operator {
+                node {
+                    uuid
+                }
+            }
+            canCurrentUserUpdateNode
+            canCurrentUserVerifyNode
+        }
+        errors {
+            code
+            message
+            path
+        }
+    }
+}

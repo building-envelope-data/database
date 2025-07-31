@@ -109,8 +109,10 @@ public abstract class AuthConfiguration
                 _.MaxConcurrency = 10
             );
             if (environment.IsEnvironment(Program.TestEnvironment))
+            {
                 // See https://gitter.im/MassTransit/MassTransit?at=5db2d058f6db7f4f856fb404
                 _.SchedulerName = Guid.NewGuid().ToString();
+            }
         });
         // Register the Quartz.NET service and configure it to block shutdown until jobs are complete.
         services.AddQuartzHostedService(_ =>
@@ -173,10 +175,10 @@ public abstract class AuthConfiguration
 
                 // Register the ASP.NET Core host and configure the ASP.NET Core-specific options.
                 _.UseAspNetCore()
-                    .EnableStatusCodePagesIntegration()
-                    .EnableRedirectionEndpointPassthrough()
+                    .EnableStatusCodePagesIntegration() // https://documentation.openiddict.com/integrations/aspnet-core#status-code-pages-middleware-integration
+                    .EnableRedirectionEndpointPassthrough() // https://documentation.openiddict.com/integrations/aspnet-core#pass-through-mode
                     .EnablePostLogoutRedirectionEndpointPassthrough();
-                // .DisableTransportSecurityRequirement();
+                // .DisableTransportSecurityRequirement(); // https://documentation.openiddict.com/integrations/aspnet-core#transport-security-requirement
 
                 // Register the System.Net.Http integration and use the identity of the current
                 // assembly as a more specific user agent, which can be useful when dealing with

@@ -3,6 +3,7 @@ using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using Database.Data;
+using Database.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -57,14 +58,15 @@ public sealed class Program
             {
                 // Inspired by https://docs.microsoft.com/en-us/aspnet/core/data/ef-mvc/intro#initialize-db-with-test-data
                 await CreateAndSeedDb(scope.ServiceProvider).ConfigureAwait(false);
+                await InitializeSigningService(scope.ServiceProvider).ConfigureAwait(false);
             }
 
             await application.RunAsync().ConfigureAwait(false);
             return 0;
         }
-        catch (Exception ex) when (ex is not HostAbortedException && ex.Source != "Microsoft.EntityFrameworkCore.Design") // see https://github.com/dotnet/efcore/issues/29923
+        catch (Exception exception) when (exception is not HostAbortedException && exception.Source != "Microsoft.EntityFrameworkCore.Design") // see https://github.com/dotnet/efcore/issues/29923
         {
-            Log.Fatal(ex, "Host terminated unexpectedly");
+            Log.Fatal(exception, "Host terminated unexpectedly");
             return 1;
         }
         finally
@@ -123,6 +125,14 @@ public sealed class Program
             var logger = services.GetRequiredService<ILogger<Program>>();
             logger.FailedToCreateAndSeedDatabase(exception);
         }
+    }
+
+    private static async Task InitializeSigningService(
+        IServiceProvider services
+    )
+    {
+        var signing = services.GetRequiredService<SigningService>();
+        await signing.Initialize();
     }
 
     // https://docs.microsoft.com/en-us/aspnet/core/fundamentals/host/generic-host

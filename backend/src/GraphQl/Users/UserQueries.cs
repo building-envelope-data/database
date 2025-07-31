@@ -5,8 +5,9 @@ using System.Security.Claims;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Database.ApiRequests;
 using Database.Data;
-using Database.Metabase;
+using Database.Services;
 using HotChocolate;
 using HotChocolate.Resolvers;
 using HotChocolate.Types;
@@ -25,7 +26,11 @@ public sealed class UserQueries
         CancellationToken cancellationToken
     )
     {
-        if (!claimsPrincipal.HasClaim(ClaimTypes.NameIdentifier)) return null;
+        if (!claimsPrincipal.HasClaim(ClaimTypes.NameIdentifier))
+        {
+            return null;
+        }
+
         return
             await context.Users.AsNoTracking()
                 .SingleOrDefaultAsync(
@@ -36,21 +41,22 @@ public sealed class UserQueries
 
     public async Task<UserInfo?> GetCurrentUserInfoAsync(
         AppSettings appSettings,
+        ApiRequestService apiRequestService,
         IHttpClientFactory httpClientFactory,
         IHttpContextAccessor httpContextAccessor,
         IResolverContext resolverContext,
         CancellationToken cancellationToken
     )
     {
-        var uri = new Uri(new Uri(appSettings.MetabaseHost), "/connect/userinfo");
         try
         {
-            return await QueryingMetabase.QueryRest<UserInfo>(
-                uri,
+            return UserInfo.FromDto(await UserApi.RequestUserInfo(
+                appSettings,
+                apiRequestService,
                 httpClientFactory,
                 httpContextAccessor,
                 cancellationToken
-            );
+            ));
         }
         catch (HttpRequestException e)
         {
@@ -58,7 +64,7 @@ public sealed class UserQueries
                 ErrorBuilder.New()
                     .SetCode("METABASE_REQUEST_FAILED")
                     .SetPath(resolverContext.Path)
-                    .SetMessage($"Failed with status code {e.StatusCode} to request {uri}.")
+                    .SetMessage($"Failed with status code {e.StatusCode} to request {appSettings.MetabaseHost}.")
                     .SetException(e)
                     .Build()
             );
@@ -68,11 +74,11 @@ public sealed class UserQueries
         {
             resolverContext.ReportError(
                 ErrorBuilder.New()
-                    .SetCode("JSON_DESERIALIZATION_FAILED")
+            .SetCode("JSON_DESERIALIZATION_FAILED")
                     .SetPath(resolverContext.Path.ToList().Concat(e.Path?.Split('.') ?? Array.Empty<string>())
                         .ToList()) // TODO Splitting the path at '.' is wrong in general.
                     .SetMessage(
-                        $"Failed to deserialize GraphQL response of request to {uri}. The details given are: Zero-based number of bytes read within the current line before the exception are {e.BytePositionInLine}, zero-based number of lines read before the exception are {e.LineNumber}, message that describes the current exception is '{e.Message}', path within the JSON where the exception was encountered is {e.Path}.")
+                        $"Failed to deserialize GraphQL response of request to {appSettings.MetabaseHost}. The details given are: Zero-based number of bytes read within the current line before the exception are {e.BytePositionInLine}, zero-based number of lines read before the exception are {e.LineNumber}, message that describes the current exception is '{e.Message}', path within the JSON where the exception was encountered is {e.Path}.")
                     .SetException(e)
                     .Build()
             );

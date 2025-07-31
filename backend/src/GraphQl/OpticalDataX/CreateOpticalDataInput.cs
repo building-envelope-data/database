@@ -19,8 +19,6 @@ public sealed record CreateOpticalDataInput(
     OpticalComponentSubtype? Subtype,
     CoatedSide? CoatedSide,
     AppliedMethodInput AppliedMethod,
-    IReadOnlyList<DataApprovalInput> Approvals,
-    // ResponseApproval Approval
     RootGetHttpsResourceInput RootResource,
     double[] NearnormalHemisphericalVisibleTransmittances,
     double[] NearnormalHemisphericalVisibleReflectances,

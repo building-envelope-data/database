@@ -18,4 +18,12 @@ public sealed class CreateOpticalDataPayload
         : base(error)
     {
     }
+
+    public CreateOpticalDataPayload(
+        OpticalData opticalData,
+        CreateOpticalDataError error
+    )
+        : base(opticalData, error)
+    {
+    }
 }

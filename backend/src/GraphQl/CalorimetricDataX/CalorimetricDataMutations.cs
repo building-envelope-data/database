@@ -1,41 +1,46 @@
+using System;
 using System.Linq;
-using System.Net.Http;
-using System.Security.Claims;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Database.Authorization;
 using Database.Data;
-using Database.Extensions;
-using HotChocolate;
+using Database.Services;
 using HotChocolate.Types;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Identity;
 
 namespace Database.GraphQl.CalorimetricDataX;
 
 [ExtendObjectType(nameof(Mutation))]
 public sealed class CalorimetricDataMutations
 {
-    // [UseUserManager]
-    // [Authorize(Policy = Configuration.AuthConfiguration.WritePolicy)]
+    // [UseUserManager] [Authorize(Policy = Configuration.AuthConfiguration.WritePolicy)]
     public async Task<CreateCalorimetricDataPayload> CreateCalorimetricDataAsync(
         CreateCalorimetricDataInput input,
         ApplicationDbContext context,
-        AppSettings appSettings,
-        IHttpClientFactory httpClientFactory,
-        IHttpContextAccessor httpContextAccessor,
+        UserService userService,
+        ResponseApprovalService responseApprovalService,
         CancellationToken cancellationToken
     )
     {
-        if (!await CalorimetricDataAuthorization.IsAuthorizedToCreateCalorimetricDataForInstitution(
-             input.CreatorId,
-             appSettings,
-             httpClientFactory,
-             httpContextAccessor,
-             cancellationToken
-             ).ConfigureAwait(false)
+        var currentUser = await userService.GetCurrentUser(
+            cancellationToken).ConfigureAwait(false);
+        if (currentUser is null)
+        {
+            return new CreateCalorimetricDataPayload(
+                new CreateCalorimetricDataError(
+                    CreateCalorimetricDataErrorCode.UNAUTHENTICATED,
+                    $"The user is not authenticated.",
+                    []
+                )
+            );
+        }
+
+        if (!CalorimetricDataAuthorization.IsAuthorizedToCreateCalorimetricDataForInstitution(
+            currentUser,
+            input.CreatorId
+            )
         )
+        {
             return new CreateCalorimetricDataPayload(
                 new CreateCalorimetricDataError(
                     CreateCalorimetricDataErrorCode.UNAUTHORIZED,
@@ -43,6 +48,8 @@ public sealed class CalorimetricDataMutations
                     []
                 )
             );
+        }
+
         var calorimetricData = new CalorimetricData(
             input.Locale,
             input.ComponentId,
@@ -79,41 +86,6 @@ public sealed class CalorimetricDataMutations
                     ))
                     .ToList()
             ),
-            input.Approvals.Select(a =>
-                new DataApproval(
-                    a.Timestamp,
-                    a.Signature,
-                    a.KeyFingerprint,
-                    a.Query,
-                    a.Response,
-                    a.ApproverId
-                )
-                {
-                    Publication = a.Publication is null
-                        ? null
-                        : new Publication(
-                            a.Publication.Title,
-                            a.Publication.Abstract,
-                            a.Publication.Section,
-                            a.Publication.Authors,
-                            a.Publication.Doi,
-                            a.Publication.ArXiv,
-                            a.Publication.Urn,
-                            a.Publication.WebAddress
-                        ),
-                    Standard = a.Standard is null
-                        ? null
-                        : new Standard(
-                            a.Standard.Title,
-                            a.Standard.Abstract,
-                            a.Standard.Section,
-                            a.Standard.Year,
-                            a.Standard.Standardizers,
-                            a.Standard.Locator
-                        )
-                }
-            ).ToList(),
-            // approval: input.Approval
             input.GValues,
             input.UValues
         );
@@ -152,6 +124,26 @@ public sealed class CalorimetricDataMutations
         calorimetricData.Resources.Add(resource);
         context.CalorimetricData.Add(calorimetricData);
         await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            calorimetricData.Approval = await responseApprovalService.CreateResponseApproval(calorimetricData, cancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            context.Remove(calorimetricData);
+            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+            return new CreateCalorimetricDataPayload(
+                calorimetricData,
+                new CreateCalorimetricDataError(
+                    CreateCalorimetricDataErrorCode.CREATING_RESPONSE_APPROVAL_FAILED,
+                    $"Signing failed with message: {exception.Message}",
+                    []
+                )
+            );
+        }
         return new CreateCalorimetricDataPayload(calorimetricData);
     }
 }

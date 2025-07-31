@@ -18,4 +18,12 @@ public sealed class CreateGeometricDataPayload
         : base(error)
     {
     }
+
+    public CreateGeometricDataPayload(
+        GeometricData geometricData,
+        CreateGeometricDataError error
+    )
+        : base(geometricData, error)
+    {
+    }
 }

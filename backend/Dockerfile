@@ -1,5 +1,6 @@
-# syntax=docker/dockerfile:1.6
-# The above line fixes the Dockerfile frontend used by BuildKit. For details
+# syntax=docker/dockerfile:1.17
+# check=error=true;skip=SecretsUsedInArgOrEnv
+# The first line fixes the Dockerfile frontend used by BuildKit. For details
 # see https://github.com/moby/buildkit/blob/master/frontend/dockerfile/docs/reference.md
 # Available versions are listed on https://hub.docker.com/r/docker/dockerfile
 
@@ -16,6 +17,10 @@ ARG CERTIFICATE_AUTHORITY_PASSWORD
 
 # Create non-root user to run commands in (see https://medium.com/@mccode/processes-in-containers-should-not-run-as-root-2feae3f0df3b)
 RUN \
+  existing_user_name="$(getent passwd ${USER_ID} 2>/dev/null | cut --delimiter=: --fields=1)" && \
+  existing_group_name="$(getent group ${GROUP_ID} 2>/dev/null | cut --delimiter=: --fields=1)" && \
+  if test -n "${existing_user_name}"; then deluser --system "${existing_user_name}"; fi && \
+  if test -n "${existing_group_name}"; then delgroup --system "${existing_group_name}"; fi && \
   addgroup --system --gid ${GROUP_ID} us && \
   adduser --system --uid ${USER_ID} --ingroup us me
 
@@ -48,14 +53,15 @@ RUN \
     --assume-yes \
     --no-install-recommends \
     curl \
-    dumb-init \
     editorconfig \
     gawk \
+    gnupg \
     lldb \
     make \
     # npm \
     openssl \
-    procps && \
+    procps \
+    tini && \
   rm \
     --recursive \
     --force \
@@ -139,6 +145,10 @@ COPY \
   --chown=me:us \
   ./test/Database.Tests.csproj \
   ./test/
+
+# Invoking GPG agent (https://www.gnupg.org/documentation/manuals/gnupg/Invoking-GPG_002dAGENT.html)
+RUN \
+  export GPG_TTY=$(tty)
 
 # https://github.com/dotnet/dotnet-docker/blob/master/samples/aspnetapp/Dockerfile.alpine-x64
 # https://github.com/dotnet/dotnet-docker/blob/master/samples/run-aspnetcore-https-development.md
@@ -314,8 +324,14 @@ RUN \
     ${HOME}/.vscode-server-insiders && \
   mkdir --parents \
     ${HOME}/.nuget \
-    ${HOME}/.dotnet
+    ${HOME}/.dotnet && \
+  mkdir --parents \
+    ${HOME}/.gnupg && \
+  chmod u=rwx,g=,o= \
+    ${HOME}/.gnupg && \
+  echo "allow-loopback-pinentry" \
+    > ${HOME}/.gnupg/gpg-agent.conf
 
 ENV SHELL=/bin/bash
 
-ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+ENTRYPOINT ["/usr/bin/tini", "--"]

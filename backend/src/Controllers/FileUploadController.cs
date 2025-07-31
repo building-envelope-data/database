@@ -2,13 +2,13 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Database.Data;
 using Database.Authorization;
+using Database.Data;
 using Database.Filters;
+using Database.Services;
 using Database.Utilities;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +16,6 @@ using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
-using Microsoft.AspNetCore.Http;
 
 namespace Database.Controllers;
 
@@ -36,41 +35,43 @@ public static partial class Log
 
 // Inspired by https://docs.microsoft.com/en-us/aspnet/core/mvc/models/file-uploads?view=aspnetcore-5.0#upload-large-files-with-streaming
 // and https://github.com/dotnet/AspNetCore.Docs/blob/b4599432690b8753fc2eac23d52957f47e01997a/aspnetcore/mvc/models/file-uploads/samples/3.x/SampleApp/
-public class FileUploadController : Controller
+public sealed class FileUploadController(
+    ILogger<FileUploadController> logger,
+    ApplicationDbContext context
+    ) : Controller
 {
     private const long
-        _fileSizeLimit =
+        FileSizeLimit =
             10737418240; // 10 GiB = 10 * 1024 MiB = 10 * 1024 * 1024^2 Byte = 10 * 1024 * 1048576 Byte = 10737418240 Byte
 
-    private const string _targetDirectoryPath = "./files/";
+    private const string TargetDirectoryPath = "./files/";
 
     // Get the default form options so that we can use them to set the default
     // limits for request body data.
-    private static readonly FormOptions _defaultFormOptions = new();
-    private readonly ILogger<FileUploadController> _logger;
-    private readonly ApplicationDbContext _context;
-    private readonly AppSettings _appSettings;
-    private readonly IHttpClientFactory _httpClientFactory;
-    private readonly IHttpContextAccessor _httpContextAccessor;
+    private static readonly FormOptions s_defaultFormOptions = new();
+    private readonly ILogger<FileUploadController> _logger = logger;
+    private readonly ApplicationDbContext _context = context;
 
     private readonly string[] _permittedExtensions =
-        { ".json", ".xml", ".txt", ".csv", ".ifc", ".rad", ".svg", ".pdf", ".png" };
+        [".json", ".xml", ".txt", ".csv", ".ifc", ".rad", ".svg", ".pdf", ".png"];
 
-    public FileUploadController(
-        ILogger<FileUploadController> logger,
-        ApplicationDbContext context,
-        AppSettings appSettings,
-        IHttpClientFactory httpClientFactory,
-        IHttpContextAccessor httpContextAccessor
-    )
+    private bool _disposed;
+
+    protected override void Dispose(bool disposing)
     {
-        _logger = logger;
-        _context = context;
-        _appSettings = appSettings;
-        _httpClientFactory = httpClientFactory;
-        _httpContextAccessor = httpContextAccessor;
-        // To save physical files to the temporary files folder, use:
-        //_targetDirectoryPath = Path.GetTempPath();
+        base.Dispose(disposing);
+        if (!_disposed)
+        {
+            // Dispose of resources held by this instance.
+            _context.Dispose();
+            _disposed = true;
+        }
+    }
+
+    // Disposable types implement a finalizer.
+    ~FileUploadController()
+    {
+        Dispose(false);
     }
 
     // The following upload methods:
@@ -94,9 +95,19 @@ public class FileUploadController : Controller
     [RequestSizeLimit(10737418240)] // 10 GiB
     public async Task<IActionResult> UploadFile(
         [FromQuery] Guid getHttpsResourceUuid,
+        [FromServices] UserService userService,
         CancellationToken cancellationToken
     )
     {
+        var currentUser = await userService.GetCurrentUser(
+            cancellationToken).ConfigureAwait(false);
+        if (currentUser is null)
+        {
+            ModelState.AddModelError("CurrentUser",
+                $"User is not authenticated.");
+            return BadRequest(ModelState);
+        }
+
         if (!MultipartRequestHelper.IsMultipartContentType(Request.ContentType))
         {
             ModelState.AddModelError("File",
@@ -125,27 +136,24 @@ public class FileUploadController : Controller
                 $"There is no data set associated with the GET HTTPS resource with UUID {getHttpsResourceUuid:D}.");
             return BadRequest(ModelState);
         }
-        if (!await FileUploadDataAuthorization.IsAuthorizedToUploadFilesForInstitution(
-             getHttpsResource.Data.CreatorId,
-             _appSettings,
-             _httpClientFactory,
-             _httpContextAccessor,
-             cancellationToken
-             ).ConfigureAwait(false)
+        if (!FileUploadDataAuthorization.IsAuthorizedToUploadFilesForInstitution(
+                currentUser,
+                getHttpsResource.Data.CreatorId
+            )
         )
         {
             return Unauthorized();
         }
 
-        Directory.CreateDirectory(_targetDirectoryPath);
+        Directory.CreateDirectory(TargetDirectoryPath);
 
         var boundary = MultipartRequestHelper.GetBoundary(
             MediaTypeHeaderValue.Parse(Request.ContentType),
-            _defaultFormOptions.MultipartBoundaryLengthLimit);
+            s_defaultFormOptions.MultipartBoundaryLengthLimit);
         var reader = new MultipartReader(boundary, HttpContext.Request.Body);
         var section = await reader.ReadNextSectionAsync(cancellationToken).ConfigureAwait(false);
 
-        while (section != null)
+        while (section is not null)
         {
             var hasContentDispositionHeader =
                 ContentDispositionHeaderValue.TryParse(
@@ -186,16 +194,19 @@ public class FileUploadController : Controller
                     contentDisposition,
                     ModelState,
                     _permittedExtensions,
-                    _fileSizeLimit
+                    FileSizeLimit
                 ).ConfigureAwait(false);
 
-                if (!ModelState.IsValid) return BadRequest(ModelState);
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
 
                 using var targetStream = System.IO.File.Create(
-                    Path.Combine(_targetDirectoryPath, trustedFileNameForFileStorage));
+                    Path.Combine(TargetDirectoryPath, trustedFileNameForFileStorage));
                 await targetStream.WriteAsync(streamedFileContent, cancellationToken).ConfigureAwait(false);
 
-                _logger.SavedUploadedFile(trustedFileNameForDisplay, _targetDirectoryPath,
+                _logger.SavedUploadedFile(trustedFileNameForDisplay, TargetDirectoryPath,
                     trustedFileNameForFileStorage);
             }
 
@@ -219,8 +230,10 @@ public class FileUploadController : Controller
                 mediaType?.Encoding ??
                 throw new ArgumentException("Impossible (because `hasMediaTypeHeader` is `true`)!"))
            )
+        {
 #pragma warning restore SYSLIB0001
             return Encoding.UTF8;
+        }
 
         return mediaType.Encoding;
     }
