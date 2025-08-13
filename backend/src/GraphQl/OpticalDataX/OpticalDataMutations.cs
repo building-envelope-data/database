@@ -64,15 +64,7 @@ public sealed class OpticalDataMutations
                 input.AppliedMethod.Arguments
                     .Select(a => new NamedMethodArgument(
                         a.Name,
-                        // TODO Turn `a.Value` into `JsonDocument`. It comes
-                        // as nested `IReadOnlyDictionary/-List` as said on
-                        // https://chillicream.com/docs/hotchocolate/v11/defining-a-schema/scalars/#any-type
-                        // Take inspiration from
-                        // https://josef.codes/custom-dictionary-string-object-jsonconverter-for-system-text-json/
-                        // and
-                        // https://github.com/joseftw/JOS.SystemTextJsonDictionaryStringObjectJsonConverter/blob/develop/src/JOS.SystemTextJsonDictionaryObjectModelBinder/DictionaryStringObjectJsonConverter.cs
-                        // This is also needed in `GetHttpsResourceMutations`.
-                        JsonDocument.Parse(@"""TODO""")
+                        a.Value
                     ))
                     .ToList(),
                 input.AppliedMethod.Sources
@@ -119,15 +111,7 @@ public sealed class OpticalDataMutations
                     input.RootResource.AppliedConversionMethod.Arguments.Select(a =>
                         new NamedMethodArgument(
                             a.Name,
-                            // TODO Turn `a.Value` into `JsonDocument`. It comes
-                            // as nested `IReadOnlyDictionary/-List` as said on
-                            // https://chillicream.com/docs/hotchocolate/v11/defining-a-schema/scalars/#any-type
-                            // Take inspiration from
-                            // https://josef.codes/custom-dictionary-string-object-jsonconverter-for-system-text-json/
-                            // and
-                            // https://github.com/joseftw/JOS.SystemTextJsonDictionaryStringObjectJsonConverter/blob/develop/src/JOS.SystemTextJsonDictionaryObjectModelBinder/DictionaryStringObjectJsonConverter.cs
-                            // This is also needed in `GetHttpsResourceMutations`.
-                            JsonDocument.Parse(@"""TODO""")
+                            a.Value
                         )
                     ).ToList(),
                     input.RootResource.AppliedConversionMethod.SourceName
@@ -135,17 +119,17 @@ public sealed class OpticalDataMutations
         );
         opticalData.Resources.Add(resource);
         context.OpticalData.Add(opticalData);
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await context.SaveChangesAsync(cancellationToken);
 
         try
         {
-            opticalData.Approval = await responseApprovalService.CreateResponseApproval(opticalData, cancellationToken).ConfigureAwait(false);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            opticalData.Approval = await responseApprovalService.CreateResponseApproval(opticalData, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             context.Remove(opticalData);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken);
 
             return new CreateOpticalDataPayload(
                 opticalData,

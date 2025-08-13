@@ -23,7 +23,7 @@ public sealed class CalorimetricDataMutations
     )
     {
         var currentUser = await userService.GetCurrentUser(
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
         if (currentUser is null)
         {
             return new CreateCalorimetricDataPayload(
@@ -63,15 +63,7 @@ public sealed class CalorimetricDataMutations
                 input.AppliedMethod.Arguments
                     .Select(a => new NamedMethodArgument(
                         a.Name,
-                        // TODO Turn `a.Value` into `JsonDocument`. It comes
-                        // as nested `IReadOnlyDictionary/-List` as said on
-                        // https://chillicream.com/docs/hotchocolate/v11/defining-a-schema/scalars/#any-type
-                        // Take inspiration from
-                        // https://josef.codes/custom-dictionary-string-object-jsonconverter-for-system-text-json/
-                        // and
-                        // https://github.com/joseftw/JOS.SystemTextJsonDictionaryStringObjectJsonConverter/blob/develop/src/JOS.SystemTextJsonDictionaryObjectModelBinder/DictionaryStringObjectJsonConverter.cs
-                        // This is also needed in `GetHttpsResourceMutations`.
-                        JsonDocument.Parse(@"""TODO""")
+                        a.Value
                     ))
                     .ToList(),
                 input.AppliedMethod.Sources
@@ -107,15 +99,7 @@ public sealed class CalorimetricDataMutations
                     input.RootResource.AppliedConversionMethod.Arguments.Select(a =>
                         new NamedMethodArgument(
                             a.Name,
-                            // TODO Turn `a.Value` into `JsonDocument`. It comes
-                            // as nested `IReadOnlyDictionary/-List` as said on
-                            // https://chillicream.com/docs/hotchocolate/v11/defining-a-schema/scalars/#any-type
-                            // Take inspiration from
-                            // https://josef.codes/custom-dictionary-string-object-jsonconverter-for-system-text-json/
-                            // and
-                            // https://github.com/joseftw/JOS.SystemTextJsonDictionaryStringObjectJsonConverter/blob/develop/src/JOS.SystemTextJsonDictionaryObjectModelBinder/DictionaryStringObjectJsonConverter.cs
-                            // This is also needed in `GetHttpsResourceMutations`.
-                            JsonDocument.Parse(@"""TODO""")
+                            a.Value
                         )
                     ).ToList(),
                     input.RootResource.AppliedConversionMethod.SourceName
@@ -123,17 +107,17 @@ public sealed class CalorimetricDataMutations
         );
         calorimetricData.Resources.Add(resource);
         context.CalorimetricData.Add(calorimetricData);
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await context.SaveChangesAsync(cancellationToken);
 
         try
         {
-            calorimetricData.Approval = await responseApprovalService.CreateResponseApproval(calorimetricData, cancellationToken).ConfigureAwait(false);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            calorimetricData.Approval = await responseApprovalService.CreateResponseApproval(calorimetricData, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             context.Remove(calorimetricData);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken);
 
             return new CreateCalorimetricDataPayload(
                 calorimetricData,

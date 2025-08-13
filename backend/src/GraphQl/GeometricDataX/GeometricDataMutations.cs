@@ -23,7 +23,7 @@ public sealed class GeometricDataMutations
         CancellationToken cancellationToken
     )
     {
-        var currentUser = await userService.GetCurrentUser(cancellationToken).ConfigureAwait(false);
+        var currentUser = await userService.GetCurrentUser(cancellationToken);
         if (currentUser is null)
         {
             return new CreateGeometricDataPayload(
@@ -63,7 +63,7 @@ public sealed class GeometricDataMutations
                 input.AppliedMethod.Arguments
                     .Select(a => new NamedMethodArgument(
                         a.Name,
-                        JsonDocument.Parse(@"""TODO""")
+                        a.Value
                     ))
                     .ToList(),
                 input.AppliedMethod.Sources
@@ -98,7 +98,7 @@ public sealed class GeometricDataMutations
                     input.RootResource.AppliedConversionMethod.Arguments.Select(a =>
                         new NamedMethodArgument(
                             a.Name,
-                            JsonDocument.Parse(@"""TODO""")
+                            a.Value
                         )
                     ).ToList(),
                     input.RootResource.AppliedConversionMethod.SourceName
@@ -107,17 +107,17 @@ public sealed class GeometricDataMutations
         geometricData.Resources.Add(resource);
 
         context.GeometricData.Add(geometricData);
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await context.SaveChangesAsync(cancellationToken);
 
         try
         {
-            geometricData.Approval = await responseApprovalService.CreateResponseApproval(geometricData, cancellationToken).ConfigureAwait(false);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            geometricData.Approval = await responseApprovalService.CreateResponseApproval(geometricData, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             context.Remove(geometricData);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken);
 
             return new CreateGeometricDataPayload(
                 geometricData,

@@ -24,7 +24,7 @@ public sealed class DataApprovalMutations
         CancellationToken cancellationToken
     )
     {
-        var currentUser = await userService.GetCurrentUser(cancellationToken).ConfigureAwait(false);
+        var currentUser = await userService.GetCurrentUser(cancellationToken);
         if (currentUser is null)
         {
             return new AddDataApprovalPayload(
@@ -61,7 +61,7 @@ public sealed class DataApprovalMutations
             );
         }
 
-        var data = await dataService.GetDataAsync(input.DataId, context, cancellationToken).ConfigureAwait(false);
+        var data = await dataService.GetDataAsync(input.DataId, context, cancellationToken);
         if (data is null)
         {
             return new AddDataApprovalPayload(
@@ -102,23 +102,24 @@ public sealed class DataApprovalMutations
             input.Signature,
             input.KeyFingerprint,
             input.Query,
+            input.Variables,
             input.Response,
             input.ApproverId,
             ReferenceType.FromInput(input.Statement)
         );
 
         data.Approvals.Add(approval);
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await context.SaveChangesAsync(cancellationToken);
 
         try
         {
-            data.Approval = await responseApprovalService.CreateResponseApproval(data, cancellationToken).ConfigureAwait(false);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            data.Approval = await responseApprovalService.CreateResponseApproval(data, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             context.Remove(data);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken);
 
             return new AddDataApprovalPayload(
                 approval,

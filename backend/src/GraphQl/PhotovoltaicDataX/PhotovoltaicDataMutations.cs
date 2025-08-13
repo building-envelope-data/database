@@ -27,7 +27,7 @@ public sealed class PhotovoltaicDataMutations
     )
     {
         var currentUser = await userService.GetCurrentUser(
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken);
         if (currentUser is null)
         {
             return new CreatePhotovoltaicDataPayload(
@@ -67,15 +67,7 @@ public sealed class PhotovoltaicDataMutations
                 input.AppliedMethod.Arguments
                     .Select(a => new NamedMethodArgument(
                         a.Name,
-                        // TODO Turn `a.Value` into `JsonDocument`. It comes
-                        // as nested `IReadOnlyDictionary/-List` as said on
-                        // https://chillicream.com/docs/hotchocolate/v11/defining-a-schema/scalars/#any-type
-                        // Take inspiration from
-                        // https://josef.codes/custom-dictionary-string-object-jsonconverter-for-system-text-json/
-                        // and
-                        // https://github.com/joseftw/JOS.SystemTextJsonDictionaryStringObjectJsonConverter/blob/develop/src/JOS.SystemTextJsonDictionaryObjectModelBinder/DictionaryStringObjectJsonConverter.cs
-                        // This is also needed in `GetHttpsResourceMutations`.
-                        JsonDocument.Parse(@"""TODO""")
+                        a.Value
                     ))
                     .ToList(),
                 input.AppliedMethod.Sources
@@ -109,15 +101,7 @@ public sealed class PhotovoltaicDataMutations
                     input.RootResource.AppliedConversionMethod.Arguments.Select(a =>
                         new NamedMethodArgument(
                             a.Name,
-                            // TODO Turn `a.Value` into `JsonDocument`. It comes
-                            // as nested `IReadOnlyDictionary/-List` as said on
-                            // https://chillicream.com/docs/hotchocolate/v11/defining-a-schema/scalars/#any-type
-                            // Take inspiration from
-                            // https://josef.codes/custom-dictionary-string-object-jsonconverter-for-system-text-json/
-                            // and
-                            // https://github.com/joseftw/JOS.SystemTextJsonDictionaryStringObjectJsonConverter/blob/develop/src/JOS.SystemTextJsonDictionaryObjectModelBinder/DictionaryStringObjectJsonConverter.cs
-                            // This is also needed in `GetHttpsResourceMutations`.
-                            JsonDocument.Parse(@"""TODO""")
+                            a.Value
                         )
                     ).ToList(),
                     input.RootResource.AppliedConversionMethod.SourceName
@@ -125,17 +109,17 @@ public sealed class PhotovoltaicDataMutations
         );
         photovoltaicData.Resources.Add(resource);
         context.PhotovoltaicData.Add(photovoltaicData);
-        await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await context.SaveChangesAsync(cancellationToken);
 
         try
         {
-            photovoltaicData.Approval = await responseApprovalService.CreateResponseApproval(photovoltaicData, cancellationToken).ConfigureAwait(false);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            photovoltaicData.Approval = await responseApprovalService.CreateResponseApproval(photovoltaicData, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
         }
         catch (Exception exception)
         {
             context.Remove(photovoltaicData);
-            await context.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            await context.SaveChangesAsync(cancellationToken);
 
             return new CreatePhotovoltaicDataPayload(
                 photovoltaicData,
