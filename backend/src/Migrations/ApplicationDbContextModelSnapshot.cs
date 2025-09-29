@@ -21,7 +21,7 @@ namespace Database.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("database")
-                .HasAnnotation("ProductVersion", "9.0.7")
+                .HasAnnotation("ProductVersion", "9.0.8")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "database", "coated_side", new[] { "back", "both", "front", "neither" });
@@ -737,15 +737,18 @@ namespace Database.Migrations
                             b1.Property<Guid>("CalorimetricDataId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<Guid>("ApproverId")
+                                .HasColumnType("uuid");
+
                             b1.Property<string>("KeyFingerprint")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -787,11 +790,11 @@ namespace Database.Migrations
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -1088,15 +1091,18 @@ namespace Database.Migrations
                             b1.Property<Guid>("GeometricDataId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<Guid>("ApproverId")
+                                .HasColumnType("uuid");
+
                             b1.Property<string>("KeyFingerprint")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -1138,11 +1144,11 @@ namespace Database.Migrations
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -1556,15 +1562,18 @@ namespace Database.Migrations
                             b1.Property<Guid>("HygrothermalDataId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<Guid>("ApproverId")
+                                .HasColumnType("uuid");
+
                             b1.Property<string>("KeyFingerprint")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -1606,11 +1615,11 @@ namespace Database.Migrations
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -1935,15 +1944,18 @@ namespace Database.Migrations
                             b1.Property<Guid>("OpticalDataId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<Guid>("ApproverId")
+                                .HasColumnType("uuid");
+
                             b1.Property<string>("KeyFingerprint")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -1985,11 +1997,11 @@ namespace Database.Migrations
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -2288,15 +2300,18 @@ namespace Database.Migrations
                             b1.Property<Guid>("PhotovoltaicDataId")
                                 .HasColumnType("uuid");
 
+                            b1.Property<Guid>("ApproverId")
+                                .HasColumnType("uuid");
+
                             b1.Property<string>("KeyFingerprint")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 
@@ -2338,11 +2353,11 @@ namespace Database.Migrations
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Query")
+                            b1.Property<string>("Message")
                                 .IsRequired()
                                 .HasColumnType("text");
 
-                            b1.Property<string>("Response")
+                            b1.Property<string>("Query")
                                 .IsRequired()
                                 .HasColumnType("text");
 

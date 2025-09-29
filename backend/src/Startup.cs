@@ -61,15 +61,7 @@ public sealed class Startup(
         services.AddSingleton(_appSettings);
         services.AddSingleton(_environment);
         // services.AddDatabaseDeveloperPageExceptionFilter();
-        services.AddSingleton<SigningService>();
-        services.AddSingleton<CacheService>();
-        services.AddScoped<AccessRightsService>();
-        services.AddScoped<ApiRequestService>();
-        services.AddScoped<DataService>();
-        services.AddScoped<MethodCalculationService>();
-        services.AddScoped<ResponseApprovalService>();
-        services.AddScoped<UserService>();
-        services.AddScoped<DatabaseService>();
+        ConfigureCustomServices(services);
     }
 
     private static void ConfigureRequestResponseServices(IServiceCollection services)
@@ -122,7 +114,8 @@ public sealed class Startup(
                 // TODO I consider the flattened structure a bug. How can we solve this?
             }
         );
-        services.AddOpenApi("v1", _ => {
+        services.AddOpenApi("v1", _ =>
+        {
             _.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
         });
     }
@@ -206,7 +199,7 @@ public sealed class Startup(
         // Database context as services are used by `OpenIddict`, see in
         // particular `AuthConfiguration`.
         services.AddDbContext<ApplicationDbContext>(options =>
-            {},
+            { },
             contextLifetime: ServiceLifetime.Transient,
             optionsLifetime: ServiceLifetime.Singleton
         );
@@ -239,6 +232,18 @@ public sealed class Startup(
                 }
             );
         }
+    }
+
+    public static void ConfigureCustomServices(IServiceCollection services)
+    {
+        services.AddScoped<AccessRightsService>();
+        services.AddScoped<ApiRequestService>();
+        services.AddScoped<DataService>();
+        services.AddScoped<ResponseApprovalService>();
+        services.AddScoped<UserService>();
+        services.AddSingleton<CacheService>();
+        services.AddSingleton<MethodFactory>();
+        services.AddSingleton<SigningService>();
     }
 
     public void Configure(WebApplication app)

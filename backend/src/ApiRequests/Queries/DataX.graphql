@@ -1,5 +1,0 @@
-query Data($uuid: Uuid!) {
-  data(id: $uuid) {
-    ...DataFields
-  }
-}
