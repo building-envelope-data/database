@@ -45,7 +45,7 @@ const cookieConsentName = "consent";
 const cookieConsentValue = "yes";
 
 export default function Layout({ children }: LayoutProps) {
-  const appTitle = "TestLab Solar Façades";
+  const appTitle = "Hygrothermal Material Database";
 
   const [cookies, setCookie] = useCookies([cookieConsentName]);
   const shouldShowCookieConsent =
