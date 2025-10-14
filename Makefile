@@ -62,6 +62,17 @@ build : check pull ## Build images
 					--build-arg USER_ID=$(shell id --user)
 .PHONY : build
 
+build-bootstrap : ## Build the bootstrap image
+	DOCKER_BUILDKIT=1 \
+		docker build \
+			--pull \
+			--build-arg GROUP_ID=$(shell id --group) \
+			--build-arg USER_ID=$(shell id --user) \
+			--tag ${NAME}_bootstrap \
+			--file ./backend/Dockerfile-bootstrap \
+			./backend
+.PHONY : build-bootstrap
+
 bake : ## Print docker-compose file equivalent bake file
 	COMPOSE_BAKE=true \
 		COMPOSE_DOCKER_CLI_BUILD=1 \
@@ -238,6 +249,10 @@ sql : ## Run the SQL script in the file `${SQL}` in the running `database` servi
 			--dbname=${database_name}
 .PHONY : sql
 
+migrate : SQL = ./backend/src/Migrations/migrate.sql
+migrate : sql ## Migrate the database by running the idempotent SQL script ./backend/src/Migrations/migrate.sql
+.PHONY : migrate
+
 # Backup with `pg_dumpall`: https://www.postgresql.org/docs/13/backup-dump.html#BACKUP-DUMP-ALL
 # Command `pg_dumpall`: https://www.postgresql.org/docs/13/app-pg-dumpall.html
 backup : CONTAINER_NAME = backup_${NAME}_database
@@ -317,55 +332,57 @@ prepare-release : ## Prepare release
 .PHONY : prepare-release
 
 gpg : COMMENT =
-gpg : ## Generate GnuPG key with the passphrase `${GNUPG_SECRET_SIGNING_KEY_PASSPHRASE}`, for example, `make NAME="Simon Wacker" COMMENT=solarbuildingenvelopes EMAIL=simon.wacker@ise.fraunhofer.de gpg`
-	gpg \
-		--quick-generate-key \
-		--pinentry-mode loopback \
-		--batch \
-		--passphrase ${GNUPG_SECRET_SIGNING_KEY_PASSPHRASE} \
-		"${NAME} (${COMMENT}) <${EMAIL}>" \
-		ed25519 \
-		sign \
-		never; \
-	fingerprint=$$(gpg \
-		--list-secret-keys \
-		--with-colons \
-		--keyid-format=long \
-		${EMAIL} \
-	| grep \
-		--before=3 \
-		"${NAME} (${COMMENT}) <${EMAIL}>" \
-	| awk -F: '$$1=="fpr" {printf $$10; exit}'); \
-	echo Fingerprint: $$fingerprint; \
-	mkdir --parents \
-		./backend/src/gpg-keys; \
-	gpg \
-		--armor \
-		--export-secret-keys $$fingerprint \
-	> ./backend/src/gpg-keys/${GNUPG_SECRET_SIGNING_KEY_FILE_NAME}
+gpg : build-bootstrap ## Generate GnuPG key with the passphrase `${GNUPG_SECRET_SIGNING_KEY_PASSPHRASE}`, for example, `make PERSON="Simon Wacker" COMMENT=solarbuildingenvelopes EMAIL=simon.wacker@ise.fraunhofer.de gpg`
+	docker run \
+		--rm \
+		--user $(shell id --user):$(shell id --group) \
+		--mount type=bind,source="$(shell pwd)/backend",target=/app \
+		${NAME}_bootstrap \
+		bash -ceuxo pipefail " \
+			gpg \
+				--quick-generate-key \
+				--batch \
+				--pinentry-mode loopback \
+				--passphrase ${GNUPG_SECRET_SIGNING_KEY_PASSPHRASE} \
+				'${PERSON} (${COMMENT}) <${EMAIL}>' \
+				ed25519 \
+				sign \
+				never && \
+			fingerprint=\$$(gpg \
+					--list-secret-keys \
+					--with-colons \
+					--keyid-format=long \
+					${EMAIL} \
+				| grep \
+					--before=3 \
+					'${PERSON} (${COMMENT}) <${EMAIL}>' \
+				| awk -F: '\$$1==\"fpr\" {printf \$$10; exit}') && \
+			echo fingerprint=\$${fingerprint} && \
+			mkdir --parents \
+				./backend/src/gpg-keys && \
+			gpg \
+				--batch \
+				--pinentry-mode loopback \
+				--passphrase ${GNUPG_SECRET_SIGNING_KEY_PASSPHRASE} \
+				--armor \
+				--export-secret-keys \$${fingerprint} \
+			> /app/src/gpg-keys/\$${fingerprint}.gpg \
+		"
 
 # --------------------- #
 # Generate Certificates #
 # --------------------- #
 
 # TODO Pass passwords in a more secure way!
-jwt-certificates : ## Create JWT encryption and signing certificates if necessary
-	DOCKER_BUILDKIT=1 \
-		docker build \
-			--pull \
-			--build-arg GROUP_ID=$(shell id --group) \
-			--build-arg USER_ID=$(shell id --user) \
-			--tag ${NAME}_bootstrap \
-			--file ./backend/Dockerfile-bootstrap \
-			./backend
+jwt-certificates : build-bootstrap ## Create JWT encryption and signing certificates if necessary
 	docker run \
 		--rm \
 		--user $(shell id --user):$(shell id --group) \
 		--mount type=bind,source="$(shell pwd)/backend",target=/app \
 		${NAME}_bootstrap \
-		bash -cx " \
+		bash -ceux " \
 			dotnet-script \
-				./create-certificates.csx \
+				/app/create-certificates.csx \
 				-- \
 				${JSON_WEB_TOKEN_ENCRYPTION_CERTIFICATE_PASSWORD} \
 				${JSON_WEB_TOKEN_SIGNING_CERTIFICATE_PASSWORD} \
@@ -391,7 +408,7 @@ generate-certificate-authority : ## Generate certificate authority ECDSA private
 		--user $(shell id --user):$(shell id --group) \
 		--mount type=bind,source="$(shell pwd)/ssl",target=/ssl \
 		nginx:1.27-bookworm \
-		bash -cx " \
+		bash -ceux " \
 			echo \"# Generate the elliptic curve (EC) private key '/ssl/${CERTIFICATE_AUTHORITY_BASE_FILE_NAME}.key' with parameters 'secp384r1', that is, a NIST/SECG curve over a 384 bit prime field as said in the output of the command 'openssl ecparam -list_curves'\" && \
 			openssl ecparam \
 				-genkey \
@@ -499,7 +516,7 @@ generate-ssl-certificate : ## Generate ECDSA private key and SSL certificate sig
 		--user $(shell id --user):$(shell id --group) \
 		--mount type=bind,source="$(shell pwd)/ssl",target=/ssl \
 		nginx:1.27-bookworm \
-		bash -cx " \
+		bash -ceux " \
 			echo \"# Generate the elliptic curve (EC) private key '/ssl/${SSL_CERTIFICATE_BASE_FILE_NAME}.key' with parameters 'secp384r1', that is, a NIST/SECG curve over a 384 bit prime field as said in the output of the command 'openssl ecparam -list_curves'\" && \
 			openssl ecparam \
 				-genkey \
