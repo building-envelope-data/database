@@ -4,11 +4,6 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Database.Configuration;
-using Database.Data;
-using Database.Data.Extensions;
-using Database.Enumerations;
-using Database.Services;
 using HotChocolate.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
@@ -26,6 +21,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi;
 using Scalar.AspNetCore;
 using Serilog;
+using Database.Configuration;
+using Database.Data;
+using Database.Data.Extensions;
+using Database.Enumerations;
+using Database.Services;
 
 namespace Database;
 
@@ -54,7 +54,7 @@ public sealed class Startup(
     public void ConfigureServices(IServiceCollection services)
     {
         AuthConfiguration.ConfigureServices(services, _environment, _appSettings);
-        GraphQlConfiguration.ConfigureServices(services, _environment, _appSettings);
+        GraphQlConfiguration.ConfigureServices(services, _environment);
         ConfigureDatabaseServices(services);
         ConfigureMessageSenderServices(services);
         ConfigureRequestResponseServices(services);
@@ -133,7 +133,7 @@ public sealed class Startup(
 
     private void ConfigureMessageSenderServices(IServiceCollection services)
     {
-        services.AddTransient<EmailSender>(serviceProvider =>
+        services.AddTransient<IEmailSender>(serviceProvider =>
             new EmailSender(
                 _appSettings.Email.SmtpHost,
                 _appSettings.Email.SmtpPort,
