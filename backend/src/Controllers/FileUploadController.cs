@@ -18,6 +18,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Net.Http.Headers;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Database.ApiRequests;
 
 namespace Database.Controllers;
 
@@ -91,6 +92,9 @@ public sealed class FileUploadController(
         [FromQuery] Guid getHttpsResourceUuid,
         [FromServices] ApplicationDbContext context,
         [FromServices] UserService userService,
+        [FromServices] ApiRequestService apiRequestService,
+        [FromServices] AppSettings appSettings,
+        [FromServices] JsonValidator jsonValidator,
         CancellationToken cancellationToken
     )
     {
@@ -186,6 +190,41 @@ public sealed class FileUploadController(
             // Drain any remaining section body that hasn't been consumed and
             // read the headers for the next section.
             section = await reader.ReadNextSectionAsync(cancellationToken);
+        }
+        var dataFormat = await QueryDataFormat.Do(
+            getHttpsResource.DataFormatId,
+            appSettings,
+            apiRequestService,
+            cancellationToken
+        );
+        if (dataFormat is null)
+        {
+            System.IO.File.Delete(getHttpsResource.FilePath);
+            ModelState.AddModelError("File", "Could not validate the uploaded file because the data format could not be queried from the metabase.");
+            return BadRequest(ModelState);
+        }
+        if (dataFormat.SchemaLocator is not null)
+        {
+            if (dataFormat.MediaType == "application/json")
+            {
+                var evaluationResults = await jsonValidator.ValidateAsync(
+                    dataFormat.SchemaLocator,
+                    getHttpsResource.FilePath,
+                    cancellationToken
+                );
+                if (!evaluationResults.IsValid)
+                {
+                    var errors = evaluationResults.Errors is null ? "unknown" : string.Join(
+                        ", ",
+                        evaluationResults.Errors.Select(error =>
+                            $"{error.Key}: {error.Value}"
+                        )
+                    );
+                    System.IO.File.Delete(getHttpsResource.FilePath);
+                    ModelState.AddModelError("File", $"The JSON file does not conform to the JSON schema {dataFormat.SchemaLocator}. Validation gave the following errors: ${errors}");
+                    return BadRequest(ModelState);
+                }
+            }
         }
         await getHttpsResource.RecomputeHashValue(cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
