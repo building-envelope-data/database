@@ -244,6 +244,7 @@ public sealed class Startup(
         services.AddScoped<UserService>();
         services.AddSingleton<CacheService>();
         services.AddSingleton<MethodFactory>();
+        services.AddSingleton<JsonValidator>();
         services.AddSingleton<SigningService>();
     }
 

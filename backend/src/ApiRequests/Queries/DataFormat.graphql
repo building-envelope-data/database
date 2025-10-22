@@ -1,0 +1,12 @@
+query DataFormat(
+    $id: Uuid!
+) {
+    dataFormat(id: $id) {
+        uuid
+        name
+        extension
+        description
+        mediaType
+        schemaLocator
+    }
+}
