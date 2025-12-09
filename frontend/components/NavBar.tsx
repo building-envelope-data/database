@@ -1,11 +1,13 @@
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/router";
 import { Button, Menu } from "antd";
 import { UserOutlined } from "@ant-design/icons";
 import paths from "../paths";
 import { useCurrentUserQuery } from "../queries/currentUser.graphql";
 import { getXsrfToken } from "../lib/apollo";
+import logoImage from "../public/c3rro.svg";
 
 type NavItemProps = {
   path: string;
@@ -37,6 +39,19 @@ export default function NavBar({ items }: NavBarProps) {
 
   return (
     <Menu mode="horizontal" selectedKeys={[router.pathname]} theme="dark">
+
+      <Menu.Item key="logo" disabled style={{ cursor: "default" }}>
+    <Image
+      src={logoImage}
+      alt="Logo"
+      style={{
+        maxWidth: "100%",
+        height: "36px",
+        width: "148px",
+      }}
+    />
+  </Menu.Item>
+
       {items.map(({ path, label }) => (
         <Menu.Item key={path}>
           <Link href={path} legacyBehavior>{label}</Link>
