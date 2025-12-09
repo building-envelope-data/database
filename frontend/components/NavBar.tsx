@@ -38,19 +38,27 @@ export default function NavBar({ items }: NavBarProps) {
   const currentUser = useCurrentUserQuery()?.data?.currentUser;
 
   return (
-    <Menu mode="horizontal" selectedKeys={[router.pathname]} theme="dark">
+    <Menu mode="horizontal" selectedKeys={[router.pathname]} theme="light">
 
-      <Menu.Item key="logo" disabled style={{ cursor: "default" }}>
-    <Image
-      src={logoImage}
-      alt="Logo"
-      style={{
-        maxWidth: "100%",
-        height: "36px",
-        width: "148px",
-      }}
-    />
-  </Menu.Item>
+      <Menu.Item
+        key="logo"
+        disabled
+        style={{
+          cursor: "default",
+          display: "flex",
+          alignItems: "center",   // ← zentriert vertikal
+          padding: 0              // optional, sieht sauberer aus
+        }}
+      >
+        <Image
+          src={logoImage}
+          alt="Logo"
+          style={{
+            height: "36px",
+            width: "148px",
+          }}
+        />
+      </Menu.Item>
 
       {items.map(({ path, label }) => (
         <Menu.Item key={path}>
