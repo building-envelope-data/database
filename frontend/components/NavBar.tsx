@@ -38,7 +38,7 @@ export default function NavBar({ items }: NavBarProps) {
   const currentUser = useCurrentUserQuery()?.data?.currentUser;
 
   return (
-    <Menu mode="horizontal" selectedKeys={[router.pathname]} theme="light">
+    <Menu mode="horizontal" selectedKeys={[router.pathname]} theme="dark">
 
       <Menu.Item
         key="logo"
