@@ -1,10 +1,13 @@
 import Head from "next/head";
+import Image from "next/image";
 import { ReactNode, useEffect, useState } from "react";
 import Footer from "./Footer";
 import NavBar from "./NavBar";
 import { Modal, Layout as AntLayout, Typography } from "antd";
 import paths from "../paths";
 import { useCookies } from "react-cookie";
+import overviewImage from "../public/c3rro.svg";
+
 
 const navItems = [
   {
@@ -89,6 +92,13 @@ export default function Layout({ children }: LayoutProps) {
         <meta charSet="utf-8" />
       </Head>
       <AntLayout.Header>
+      <Image
+          src={overviewImage}
+          alt="Schematic depiction of how users like architects, planners, or engineers can use the metabase to find products and data in and across databases."
+          style={{
+            maxWidth: "100%",
+            height: "20px",
+          }} />
         <NavBar items={navItems} />
       </AntLayout.Header>
       <AntLayout.Content style={{ padding: "50px" }}>
