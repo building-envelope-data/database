@@ -75,8 +75,9 @@ When doing so, please adhere to our
    `make bootstrap COMMAND='./gpg.mk key PERSON="${name}" COMMENT="${comment}" EMAIL="${email}"'`
    with your information filled in, for example,
    `make bootstrap COMMAND='./gpg.mk key PERSON="Anna Smith" COMMENT="first" EMAIL="anna.smith@fraunhofer.de"'`.
-   Then copy the key's fingerprint which is output by the command and set it as
-   the value of the `GNUPG_SECRET_SIGNING_KEY_FINGERPRINT` variable in `./.env`.
+   In `./.env`, replace the temporary value of
+   `GNUPG_SECRET_SIGNING_KEY_FINGERPRINT` by the fingerprint which is printed
+   as output.
 
 1. Create the PostgreSQL database and schema by running
    `./database.mk create migrate`.
