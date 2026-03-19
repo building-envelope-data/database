@@ -59,7 +59,7 @@ When doing so, please adhere to our
 1. Prepare your environment by running
    `cp ./.env.development.sample ./.env && chmod 600 ./.env`
    and adding the line
-   `127.0.0.1 local.solarbuildingenvelopes.org www.local.solarbuildingenvelopes.org staging.local.solarbuildingenvelopes.org telemetry.local.solarbuildingenvelopes.org`
+   `127.0.0.1 local.solarbuildingenvelopes.com www.local.solarbuildingenvelopes.com staging.local.solarbuildingenvelopes.com telemetry.local.solarbuildingenvelopes.com`
    to your
    `/etc/hosts` file. Note that the value of
    `GNUPG_SECRET_SIGNING_KEY_FINGERPRINT` in `./.env` will be set later.
