@@ -89,8 +89,6 @@ When doing so, please adhere to our
    - web frontend at `https://www.local.solarbuildingenvelopes.com:${HTTPS_PORT}`,
    - GraphQL playground at `https://www.local.solarbuildingenvelopes.com:${HTTPS_PORT}/graphql/`,
    - OpenAPI reference at `https://www.local.solarbuildingenvelopes.com:${HTTPS_PORT}/openapi/docs/`,
-   - dummy email server at `https://www.local.solarbuildingenvelopes.com:${HTTPS_PORT}/email/`
-     (to view for example the confirmation email sent during registration),
    - OpenId Connect configuration at
      `https://www.local.solarbuildingenvelopes.com:${HTTPS_PORT}/.well-known/openid-configuration`,
    - telemetry web frontend at `https://telemetry.local.solarbuildingenvelopes.com:${HTTPS_PORT}`,
