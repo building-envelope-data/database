@@ -43,9 +43,9 @@ test : ## Run (previously failed) tests, possibly with custom arguments `${ARGS}
 		${ARGS}
 .PHONY : test
 
-assets : ## Build assets
-	npm run all
-.PHONY : assets
+# assets : ## Build assets
+# 	npm run all
+# .PHONY : assets
 
 # For usage information see https://github.com/tomchavakis/nuget-license#usage
 # or run `dotnet tool run dotnet-project-licenses -- --help`
@@ -159,20 +159,20 @@ dotbuild : ## Build projects
 	dotnet build
 .PHONY : dotbuild
 
-dedup : ## Deduplicate code lines matching the pattern `${PATTERN}`, for example, `make dedup PATTERN="using Infrastructure.Aggregates"`
-	find . -name "*.cs" \
-		| xargs -n 1 \
-				gawk -i inplace "{ \
-					if (/${PATTERN}/) \
-						{ if (!seen[$$0]++) { print } } \
-					else \
-						{ print } \
-					}"
-.PHONY : dedup
+# dedup : ## Deduplicate code lines matching the pattern `${PATTERN}`, for example, `make dedup PATTERN="using Infrastructure.Aggregates"`
+# 	find . -name "*.cs" \
+# 		| xargs -n 1 \
+# 				gawk -i inplace "{ \
+# 					if (/${PATTERN}/) \
+# 						{ if (!seen[$$0]++) { print } } \
+# 					else \
+# 						{ print } \
+# 					}"
+# .PHONY : dedup
 
-diagrams : ## Draw images from textual UML diagrams
-	plantuml diagrams/*.puml
-.PHONY : diagrams
+# diagrams : ## Draw images from textual UML diagrams
+# 	plantuml diagrams/*.puml
+# .PHONY : diagrams
 
 # See https://github.com/hasura/graphqurl#export-schema
 schema : ## Fetch GraphQL schema using `hasura/graphqurl`
