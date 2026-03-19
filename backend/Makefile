@@ -159,7 +159,7 @@ dotbuild : ## Build projects
 	dotnet build
 .PHONY : dotbuild
 
-dedup : ## Dedeuplicate code lines matching the pattern `${PATTERN}`, for example, `make dedup PATTERN="using Infrastructure.Aggregates"`
+dedup : ## Deduplicate code lines matching the pattern `${PATTERN}`, for example, `make dedup PATTERN="using Infrastructure.Aggregates"`
 	find . -name "*.cs" \
 		| xargs -n 1 \
 				gawk -i inplace "{ \
