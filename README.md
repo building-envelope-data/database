@@ -339,6 +339,8 @@ and the pages following it.
       - `METABASE_HOST` is the domain name with sub-domain of the metabase, in
         particular, to use it as OpenId Connect provider and to ask it for
         information about logged-in users needed for authorization;
+      - Define the PostgreSQL user, password and database name e.g. with
+        `POSTGRES_USER=postgres` and `POSTGRES_DATABASE_NAME=xbase` and a new `POSTGRES_PASSWORD`.
       - `DATABASE_ID` is the UUID that was assigned to this product-data
         database upon registering it at the metabase;
       - `OPERATOR_ID` is the UUID of the institution that operates this
