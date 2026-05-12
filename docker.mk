@@ -7,6 +7,11 @@ SHELL := /usr/bin/env bash
 .SHELLFLAGS := -o errexit -o errtrace -o nounset -o pipefail -c
 MAKEFLAGS += --warn-undefined-variables
 
+GROUP_ID ?= $(shell id --group)
+USER_ID ?= $(shell id --user)
+export GROUP_ID
+export USER_ID
+
 COMPOSE_BAKE=true
 SERVICE=
 
@@ -63,8 +68,8 @@ build : symlink dotenv pull ## Build images
 	if [[ "${ENVIRONMENT}" == "development" ]]; then \
 		docker compose build \
 			--pull \
-			--build-arg GROUP_ID="$(shell id --group)" \
-			--build-arg USER_ID="$(shell id --user)" ${SERVICE} ; \
+			--build-arg GROUP_ID="$(GROUP_ID)" \
+			--build-arg USER_ID="$(USER_ID)" ${SERVICE} ; \
 	else \
 		$(MAKE) --file=./forge.mk \
 			build \
