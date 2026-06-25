@@ -184,8 +184,7 @@ schema : ## Fetch GraphQL schema using `hasura/graphqurl`
 .PHONY : schema
 
 check-database : ## Check whether there have been any model changes made since the last migration was added and whether the C# domain model matches the PostgreSQL database schema
-	$(MAKE) test ARGS='--filter "FullyQualifiedName~EnsureMigrationsAreUpToDate"'
-	$(MAKE) test ARGS='--filter "FullyQualifiedName~EnsureDomainModelMatchesDatabaseSchema"'
+	$(MAKE) test ARGS='--filter "FullyQualifiedName~EnsureMigrationsAreUpToDate|FullyQualifiedName~EnsureDomainModelMatchesDatabaseSchema"'
 .PHONY : check-database
 
 has-pending-model-changes : ## Check whether there have been any model changes made since the last migration was added
