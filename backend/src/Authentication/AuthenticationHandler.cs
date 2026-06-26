@@ -166,8 +166,8 @@ public sealed class AuthenticationHandler(
         // (another one than `appSettings.OpenIdConnectClient.Id`) and uses
         // this token to authenticate (and authorize) access to this database.
         var metabaseAuthenticateResult = await userService.SwitchUserOrApplicationAsync(
-            user => Task.FromResult(user is null ? null : CreateSuccessfulAuthenticateResult($"user:{user.Uuid.ToString("D")}", null)),
-            application => Task.FromResult<AuthenticateResult?>(CreateSuccessfulAuthenticateResult($"client:{application.ClientId}", application.ClientId)),
+            (user, clientId) => Task.FromResult(user is null ? null : CreateSuccessfulAuthenticateResult(user.Uuid.ToString("D"), clientId)),
+            (application, clientId) => Task.FromResult<AuthenticateResult?>(CreateSuccessfulAuthenticateResult($"client:{application.ClientId}", clientId)),
             cancellationToken
         );
         if (metabaseAuthenticateResult is { Succeeded: true, Principal.Identity.IsAuthenticated: true })

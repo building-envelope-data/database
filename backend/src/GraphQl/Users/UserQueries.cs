@@ -19,8 +19,8 @@ public sealed class UserQueries
     )
     {
         return authorization.SwitchUserOrApplicationAsync(
-            user => Task.FromResult(user),
-            application => Task.FromResult<QueryCurrentUserOrApplication.CurrentUser?>(null),
+            (user, _) => Task.FromResult(user),
+            (application, _) => Task.FromResult<QueryCurrentUserOrApplication.CurrentUser?>(null),
             cancellationToken
         );
     }

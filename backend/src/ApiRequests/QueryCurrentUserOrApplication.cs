@@ -32,7 +32,7 @@ public sealed class QueryCurrentUserOrApplication(
 {
     private const string QueryFileName = "CurrentUserOrApplication.graphql";
 
-    public static readonly CurrentUserOrApplication Empty = new(null, null);
+    public static readonly CurrentUserOrApplication Empty = new(null, null, null);
 
     public Uri GetGraphQlEndpoint =>
         appSettings.MetabaseGraphQlEndpoint;
@@ -115,6 +115,7 @@ public sealed class QueryCurrentUserOrApplication(
     );
 
     public sealed record CurrentUserOrApplication(
+        string? currentOpenIdConnectTokenClientId,
         CurrentUser? CurrentUser,
         CurrentOpenIdConnectApplication? CurrentApplication
     )

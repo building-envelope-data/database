@@ -31,19 +31,19 @@ public sealed class UserService(
     }
 
     public async Task<T> SwitchUserOrApplicationAsync<T>(
-        Func<QueryCurrentUserOrApplication.CurrentUser?, Task<T>> handleUser,
-        Func<QueryCurrentUserOrApplication.CurrentOpenIdConnectApplication, Task<T>> handleApplication,
+        Func<QueryCurrentUserOrApplication.CurrentUser?, string?, Task<T>> handleUser,
+        Func<QueryCurrentUserOrApplication.CurrentOpenIdConnectApplication, string?, Task<T>> handleApplication,
         CancellationToken cancellationToken
     )
     {
         var userOrApplication = await FetchCurrentUserOrApplicationAsync(cancellationToken);
         if (userOrApplication.CurrentApplication is not null)
         {
-            return await handleApplication(userOrApplication.CurrentApplication);
+            return await handleApplication(userOrApplication.CurrentApplication, userOrApplication.currentOpenIdConnectTokenClientId);
         }
         else
         {
-            return await handleUser(userOrApplication.CurrentUser);
+            return await handleUser(userOrApplication.CurrentUser, userOrApplication.currentOpenIdConnectTokenClientId);
         }
     }
 

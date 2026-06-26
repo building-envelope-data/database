@@ -17,8 +17,8 @@ public sealed class InstitutionQueries
     )
     {
         return authorization.SwitchUserOrApplicationAsync(
-            user => Task.FromResult<QueryCurrentUserOrApplication.CurrentInstitution?>(null),
-            application => Task.FromResult<QueryCurrentUserOrApplication.CurrentInstitution?>(application.Owner),
+            (user, _) => Task.FromResult<QueryCurrentUserOrApplication.CurrentInstitution?>(null),
+            (application, _) => Task.FromResult<QueryCurrentUserOrApplication.CurrentInstitution?>(application.Owner),
             cancellationToken
         );
     }

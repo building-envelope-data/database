@@ -1,4 +1,5 @@
 query CurrentUserOrApplication($databaseId: Uuid!) {
+  currentOpenIdConnectTokenClientId
   currentUser {
     uuid
     name

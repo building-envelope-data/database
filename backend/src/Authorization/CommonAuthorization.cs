@@ -17,8 +17,8 @@ public sealed class CommonAuthorization(
     private const string UNAUTHORIZED_CODE = "AUTH_NOT_AUTHENTICATED";
 
     public Task<T> SwitchUserOrApplicationAsync<T>(
-        Func<QueryCurrentUserOrApplication.CurrentUser?, Task<T>> handleUser,
-        Func<QueryCurrentUserOrApplication.CurrentOpenIdConnectApplication, Task<T>> handleApplication,
+        Func<QueryCurrentUserOrApplication.CurrentUser?, string?, Task<T>> handleUser,
+        Func<QueryCurrentUserOrApplication.CurrentOpenIdConnectApplication, string?, Task<T>> handleApplication,
         CancellationToken cancellationToken
     )
     {
@@ -33,8 +33,8 @@ public sealed class CommonAuthorization(
     public Task<bool> IsAuthenticated(CancellationToken cancellationToken)
     {
         return userService.SwitchUserOrApplicationAsync(
-            user => Task.FromResult(user is not null),
-            application => Task.FromResult(application is not null),
+            (user, _) => Task.FromResult(user is not null),
+            (application, _) => Task.FromResult(application is not null),
             cancellationToken
         );
     }
@@ -42,11 +42,11 @@ public sealed class CommonAuthorization(
     public Task<bool> IsDatabaseOperator(CancellationToken cancellationToken)
     {
         return userService.SwitchUserOrApplicationAsync(
-            user => Task.FromResult(
+            (user, _) => Task.FromResult(
                 user is not null
                 && user.IsAtLeastAssistantManagerOfDatabaseOperator()
             ),
-            application => Task.FromResult(
+            (application, _) => Task.FromResult(
                 application.Owner.IsDatabaseOperator()
             ),
             cancellationToken
