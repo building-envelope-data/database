@@ -1,17 +1,20 @@
 import { Statistic, Tag } from "antd";
 import {
-  InstitutionAccessPolicyPartialFragment,
-  OpenIdConnectApplicationAccessPolicyPartialFragment,
-  UserAccessPolicyPartialFragment,
+  InstitutionAccessPoliciesPartialFragment,
+  OpenIdConnectApplicationAccessPoliciesPartialFragment,
+  UserAccessPoliciesPartialFragment,
 } from "../../queries/accessPolicies.generated";
 import EntitySummary from "../entities/EntitySummary";
 import dayjs from "dayjs";
 import durationPlugin from "dayjs/plugin/duration";
+import relativeTime from "dayjs/plugin/relativeTime";
 import { Route } from "next";
 import { Scalars } from "../../__generated__/graphql";
 import { isTruthy } from "../../lib/array";
+import DateTimeX from "../DateTimeX";
 
 dayjs.extend(durationPlugin);
+dayjs.extend(relativeTime);
 
 export default function AccessPolicySummaryBase({
   entity,
@@ -19,9 +22,9 @@ export default function AccessPolicySummaryBase({
   route,
 }: {
   entity:
-    | UserAccessPolicyPartialFragment
-    | InstitutionAccessPolicyPartialFragment
-    | OpenIdConnectApplicationAccessPolicyPartialFragment;
+    | UserAccessPoliciesPartialFragment
+    | InstitutionAccessPoliciesPartialFragment
+    | OpenIdConnectApplicationAccessPoliciesPartialFragment;
   stakeholder: {
     uuid: Scalars["Uuid"]["output"];
     name?: string | null;
@@ -40,12 +43,12 @@ export default function AccessPolicySummaryBase({
 
   return (
     <EntitySummary
-      entity={{ ...entity, ...stakeholder }}
+      entity={stakeholder}
       route={route}
       tags={[
         entity.isAlwaysAllowed && (
           <Tag key="status" style={{ fontWeight: "normal" }}>
-            Always Allowed
+            always allowed
           </Tag>
         ),
       ].filter(isTruthy)}
@@ -56,8 +59,18 @@ export default function AccessPolicySummaryBase({
           value={entity.accessCountSinceStartTime?.accessCount ?? 0}
           suffix={`of ${entity.upperAccessLimitPerTimeDuration?.upperLimit ?? "∞"}`}
         />
-        from {startTime?.format("YYYY-MM-DD HH:mm") ?? "-∞"} until{" "}
-        {endTime?.format("YYYY-MM-DD HH:mm") ?? "∞"}
+        <div>
+          {duration != null && startTime == null ? (
+            <>within {duration.humanize()}</>
+          ) : (
+            <>
+              from{" "}
+              {startTime == null ? "-∞" : <DateTimeX parsedValue={startTime} />}{" "}
+              until{" "}
+              {endTime == null ? "-∞" : <DateTimeX parsedValue={endTime} />}
+            </>
+          )}
+        </div>
       </div>
     </EntitySummary>
   );

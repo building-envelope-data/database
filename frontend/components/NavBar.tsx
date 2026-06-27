@@ -80,6 +80,10 @@ const userItems = (currentUser: CurrentUserPartialFragment) => [
         key: paths.uploadFile,
         label: <Link href={paths.uploadFile}>Upload File</Link>,
       },
+      currentUser.isAtLeastAssistantManagerOfDatabaseOperator && {
+        key: paths.accessPolicies,
+        label: <Link href={paths.accessPolicies}>Access Policies</Link>,
+      },
       {
         key: paths.logout,
         label: (

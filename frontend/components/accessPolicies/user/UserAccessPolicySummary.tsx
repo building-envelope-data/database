@@ -1,7 +1,7 @@
-import { Scalars } from "../../__generated__/graphql";
-import paths from "../../paths";
-import { UserAccessPolicyPartialFragment } from "../../queries/accessPolicies.generated";
-import AccessPolicySummaryBase from "./AccessPolicySummaryBase";
+import { Scalars } from "../../../__generated__/graphql";
+import paths from "../../../paths";
+import { UserAccessPoliciesPartialFragment } from "../../../queries/accessPolicies.generated";
+import AccessPolicySummaryBase from "../AccessPolicySummaryBase";
 
 const nameFallback = (id: Scalars["Uuid"]["output"]) => ({
   uuid: id,
@@ -11,7 +11,7 @@ const nameFallback = (id: Scalars["Uuid"]["output"]) => ({
 export default function UserAccessPolicySummary({
   entity,
 }: {
-  entity: UserAccessPolicyPartialFragment;
+  entity: UserAccessPoliciesPartialFragment;
 }) {
   return (
     <AccessPolicySummaryBase

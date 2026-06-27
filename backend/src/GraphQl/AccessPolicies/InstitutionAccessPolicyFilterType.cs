@@ -13,6 +13,10 @@ public sealed class InstitutionAccessPolicyFilterType
     {
         descriptor.BindFieldsExplicitly();
         descriptor.Name(nameof(InstitutionAccessPolicyFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
         descriptor.Field(_ => _.InstitutionId);
         descriptor.Field(_ => _.IsAlwaysAllowed);
         descriptor.Field(_ => _.IsWithinAccessLimitInTimeSpan);

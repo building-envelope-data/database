@@ -192,12 +192,13 @@ public sealed class DataAccessPolicyType
                 is not null;
         }
 
+        [UsePaging]
         [UseFiltering<UserAccessPolicyFilterType>]
         [UseSorting<UserAccessPolicySortType>]
-        public static async Task<UserAccessPolicy[]> GetUserAccessPoliciesAsync(
+        public static async ValueTask<HotChocolate.Types.Pagination.Connection<UserAccessPolicy>> GetUserAccessPoliciesAsync(
             [Parent] DataAccessPolicy dataAccessPolicy,
             IResolverContext resolverContext,
-            IUserAccessPoliciesByDataAccessPolicyIdDataLoader byId,
+            ApplicationDbContext databaseContext,
             CommonAuthorization authorization,
             CancellationToken cancellationToken
         )
@@ -205,20 +206,23 @@ public sealed class DataAccessPolicyType
             if (!await authorization.IsDatabaseOperator(cancellationToken))
             {
                 authorization.ReportUnauthorizedError(resolverContext);
-                return Array.Empty<UserAccessPolicy>();
+                return HotChocolate.Types.Pagination.Connection.Empty<UserAccessPolicy>();
             }
-            return await byId
-                .With(resolverContext.GetQueryContext<UserAccessPolicy>())
-                .LoadAsync(dataAccessPolicy.Id, cancellationToken)
-                ?? [];
+            return await databaseContext.UserAccessPolicies
+                .AsNoTracking()
+                .Where(_ => _.DataAccessPolicyId == dataAccessPolicy.Id)
+                .With(resolverContext.GetQueryContext<UserAccessPolicy>(), Sorting.DefaultEntityOrder)
+                .ToPageAsync(resolverContext.GetPagingArguments(), cancellationToken)
+                .ToConnectionAsync();
         }
 
+        [UsePaging]
         [UseFiltering<InstitutionAccessPolicyFilterType>]
         [UseSorting<InstitutionAccessPolicySortType>]
-        public static async Task<InstitutionAccessPolicy[]> GetInstitutionAccessPoliciesAsync(
+        public static async ValueTask<HotChocolate.Types.Pagination.Connection<InstitutionAccessPolicy>> GetInstitutionAccessPoliciesAsync(
             [Parent] DataAccessPolicy dataAccessPolicy,
             IResolverContext resolverContext,
-            IInstitutionAccessPoliciesByDataAccessPolicyIdDataLoader byId,
+            ApplicationDbContext databaseContext,
             CommonAuthorization authorization,
             CancellationToken cancellationToken
         )
@@ -226,20 +230,23 @@ public sealed class DataAccessPolicyType
             if (!await authorization.IsDatabaseOperator(cancellationToken))
             {
                 authorization.ReportUnauthorizedError(resolverContext);
-                return Array.Empty<InstitutionAccessPolicy>();
+                return HotChocolate.Types.Pagination.Connection.Empty<InstitutionAccessPolicy>();
             }
-            return await byId
-                .With(resolverContext.GetQueryContext<InstitutionAccessPolicy>())
-                .LoadAsync(dataAccessPolicy.Id, cancellationToken)
-                ?? [];
+            return await databaseContext.InstitutionAccessPolicies
+                .AsNoTracking()
+                .Where(_ => _.DataAccessPolicyId == dataAccessPolicy.Id)
+                .With(resolverContext.GetQueryContext<InstitutionAccessPolicy>(), Sorting.DefaultEntityOrder)
+                .ToPageAsync(resolverContext.GetPagingArguments(), cancellationToken)
+                .ToConnectionAsync();
         }
 
+        [UsePaging]
         [UseFiltering<OpenIdConnectApplicationAccessPolicyFilterType>]
         [UseSorting<OpenIdConnectApplicationAccessPolicySortType>]
-        public static async Task<OpenIdConnectApplicationAccessPolicy[]> GetOpenIdConnectApplicationAccessPoliciesAsync(
+        public static async ValueTask<HotChocolate.Types.Pagination.Connection<OpenIdConnectApplicationAccessPolicy>> GetOpenIdConnectApplicationAccessPoliciesAsync(
             [Parent] DataAccessPolicy dataAccessPolicy,
             IResolverContext resolverContext,
-            IOpenIdConnectApplicationAccessPoliciesByDataAccessPolicyIdDataLoader byId,
+            ApplicationDbContext databaseContext,
             CommonAuthorization authorization,
             CancellationToken cancellationToken
         )
@@ -247,12 +254,14 @@ public sealed class DataAccessPolicyType
             if (!await authorization.IsDatabaseOperator(cancellationToken))
             {
                 authorization.ReportUnauthorizedError(resolverContext);
-                return Array.Empty<OpenIdConnectApplicationAccessPolicy>();
+                return HotChocolate.Types.Pagination.Connection.Empty<OpenIdConnectApplicationAccessPolicy>();
             }
-            return await byId
-                .With(resolverContext.GetQueryContext<OpenIdConnectApplicationAccessPolicy>())
-                .LoadAsync(dataAccessPolicy.Id, cancellationToken)
-                ?? [];
+            return await databaseContext.OpenIdConnectApplicationAccessPolicies
+                .AsNoTracking()
+                .Where(_ => _.DataAccessPolicyId == dataAccessPolicy.Id)
+                .With(resolverContext.GetQueryContext<OpenIdConnectApplicationAccessPolicy>(), Sorting.DefaultEntityOrder)
+                .ToPageAsync(resolverContext.GetPagingArguments(), cancellationToken)
+                .ToConnectionAsync();
         }
     }
 }

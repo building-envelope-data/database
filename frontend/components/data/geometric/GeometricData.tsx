@@ -5,6 +5,7 @@ import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import GeometricDataSummary from "./GeometricDataSummary";
 import QueryToolbar from "../../QueryToolbar";
+import LocalAndGlobalDataAccessPolicies from "../../accessPolicies/LocalAndGlobalDataAccessPolicies";
 
 interface GeometricDataProps {
   id: Scalars["Uuid"]["input"];
@@ -45,6 +46,7 @@ export default function GeometricData({ id }: GeometricDataProps) {
         <GeometricDataSummary entity={entity} />
       </Card>
       <QueryToolbar query={GeometricDataDocument} variables={queryVariables} />
+      <LocalAndGlobalDataAccessPolicies dataId={entity.uuid} />
     </div>
   );
 }

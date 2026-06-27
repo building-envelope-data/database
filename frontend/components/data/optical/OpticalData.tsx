@@ -1,12 +1,12 @@
 import { Scalars } from "../../../__generated__/graphql";
 import { OpticalDataDocument } from "../../../queries/data.generated";
-import { Skeleton, Result, Card, Button, Divider, Typography } from "antd";
+import { Skeleton, Result, Card, Button } from "antd";
 import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import OpticalDataSummary from "./OpticalDataSummary";
 import OpticalDataRibbon from "./OpticalDataRibbon";
 import QueryToolbar from "../../QueryToolbar";
-import DataAccessPolicy from "../../accessPolicies/DataAccessPolicy";
+import LocalAndGlobalDataAccessPolicies from "../../accessPolicies/LocalAndGlobalDataAccessPolicies";
 
 interface OpticalDataProps {
   id: Scalars["Uuid"]["input"];
@@ -20,13 +20,13 @@ export default function OpticalData({ id }: OpticalDataProps) {
     variables: queryVariables,
   });
   useQueryHandler({ error });
-  const theData = data?.data;
+  const entity = data?.data;
 
   if (loading) {
     return <Skeleton active avatar title />;
   }
 
-  if (!theData) {
+  if (!entity) {
     return (
       <Result
         status="500"
@@ -43,16 +43,13 @@ export default function OpticalData({ id }: OpticalDataProps) {
 
   return (
     <div>
-      <OpticalDataRibbon {...theData}>
+      <OpticalDataRibbon {...entity}>
         <Card style={{ marginBottom: "1em" }}>
-          <OpticalDataSummary entity={theData} />
+          <OpticalDataSummary entity={entity} />
         </Card>
       </OpticalDataRibbon>
       <QueryToolbar query={OpticalDataDocument} variables={queryVariables} />
-      <Divider />
-      <DataAccessPolicy dataId={theData.uuid} />
-      <Divider />
-      <DataAccessPolicy dataId={null} />
+      <LocalAndGlobalDataAccessPolicies dataId={entity.uuid} />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-fragment UserAccessPolicyPartial on UserAccessPolicy {
+fragment UserAccessPoliciesPartial on UserAccessPolicy {
   id
   uuid
   userId
@@ -19,7 +19,7 @@ fragment UserAccessPolicyPartial on UserAccessPolicy {
   }
 }
 
-fragment InstitutionAccessPolicyPartial on InstitutionAccessPolicy {
+fragment InstitutionAccessPoliciesPartial on InstitutionAccessPolicy {
   id
   uuid
   institutionId
@@ -40,13 +40,13 @@ fragment InstitutionAccessPolicyPartial on InstitutionAccessPolicy {
   }
 }
 
-fragment OpenIdConnectApplicationAccessPolicyPartial on OpenIdConnectApplicationAccessPolicy {
+fragment OpenIdConnectApplicationAccessPoliciesPartial on OpenIdConnectApplicationAccessPolicy {
   id
   uuid
   clientId
   client {
     uuid
-    name
+    name: clientId
   }
   isAlwaysAllowed
   isWithinAccessLimitInTimeSpan
@@ -67,18 +67,20 @@ fragment DataAccessPoliciesPartial on DataAccessPolicy {
   data {
     uuid
     kind
+    name
   }
+  isGlobal
   combinator
   isAnyoneAllowed
   isNobodyAllowed
   userAccessPolicies {
-    ...UserAccessPolicyPartial
+    totalCount
   }
   institutionAccessPolicies {
-    ...InstitutionAccessPolicyPartial
+    totalCount
   }
   openIdConnectApplicationAccessPolicies {
-    ...OpenIdConnectApplicationAccessPolicyPartial
+    totalCount
   }
 }
 
@@ -90,8 +92,14 @@ query DataAccessPolicies(
   $first: Int
   $after: String
   $where: DataAccessPolicyPropositionInput
+  $order: [DataAccessPolicySortInput!]
 ) {
-  connection: dataAccessPolicies(first: $first, after: $after, where: $where) {
+  connection: dataAccessPolicies(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
     totalCount
     pageInfo {
       hasNextPage
@@ -108,5 +116,80 @@ query DataAccessPolicies(
 query DataAccessPolicy($dataId: Uuid) {
   data: dataAccessPolicy(dataId: $dataId) {
     ...DataAccessPolicyPartial
+  }
+}
+
+query UserAccessPolicies(
+  $first: Int
+  $after: String
+  $where: UserAccessPolicyPropositionInput
+  $order: [UserAccessPolicySortInput!]
+) {
+  connection: userAccessPolicies(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...UserAccessPoliciesPartial
+      }
+    }
+  }
+}
+
+query InstitutionAccessPolicies(
+  $first: Int
+  $after: String
+  $where: InstitutionAccessPolicyPropositionInput
+  $order: [InstitutionAccessPolicySortInput!]
+) {
+  connection: institutionAccessPolicies(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...InstitutionAccessPoliciesPartial
+      }
+    }
+  }
+}
+
+query OpenIdConnectApplicationAccessPolicies(
+  $first: Int
+  $after: String
+  $where: OpenIdConnectApplicationAccessPolicyPropositionInput
+  $order: [OpenIdConnectApplicationAccessPolicySortInput!]
+) {
+  connection: openIdConnectApplicationAccessPolicies(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...OpenIdConnectApplicationAccessPoliciesPartial
+      }
+    }
   }
 }

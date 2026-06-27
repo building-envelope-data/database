@@ -4,7 +4,7 @@ query OpenIdConnectApplications($ids: [String!]!) {
       node {
         uuid
         id: clientId
-        name: displayName
+        displayName
       }
     }
   }

@@ -14,6 +14,10 @@ public abstract class ResponseApprovalFilterType
     {
         base.Configure(descriptor);
         descriptor.Name(nameof(ResponseApprovalFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
         descriptor.Field(_ => _.UserId);
         descriptor.Field(_ => _.Locale);
         descriptor.Field(_ => _.Name);

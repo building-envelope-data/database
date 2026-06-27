@@ -878,9 +878,24 @@ type DataAccessPolicy implements Node {
   data: Data @cost(weight: "0")
   id: ID!
   institutionAccessPolicies(
+    "Returns the elements in the list that come after the specified cursor."
+    after: String
+    "Returns the elements in the list that come before the specified cursor."
+    before: String
+    "Returns the first _n_ elements from the list."
+    first: Int
+    "Returns the last _n_ elements from the list."
+    last: Int
     order: [InstitutionAccessPolicySortInput!]
     where: InstitutionAccessPolicyPropositionInput
-  ): [InstitutionAccessPolicy!]!
+  ): InstitutionAccessPolicyConnection
+    @listSize(
+      assumedSize: 100
+      slicingArguments: ["first", "last"]
+      slicingArgumentDefaultValue: 100
+      sizedFields: ["edges", "nodes"]
+      requireOneSlicingArgument: false
+    )
   isAccessAllowed(
     institutionIds: [Uuid!]
     openIdConnectClientId: String
@@ -890,14 +905,44 @@ type DataAccessPolicy implements Node {
   isGlobal: Boolean!
   isNobodyAllowed: Boolean!
   openIdConnectApplicationAccessPolicies(
+    "Returns the elements in the list that come after the specified cursor."
+    after: String
+    "Returns the elements in the list that come before the specified cursor."
+    before: String
+    "Returns the first _n_ elements from the list."
+    first: Int
+    "Returns the last _n_ elements from the list."
+    last: Int
     order: [OpenIdConnectApplicationAccessPolicySortInput!]
     where: OpenIdConnectApplicationAccessPolicyPropositionInput
-  ): [OpenIdConnectApplicationAccessPolicy!]!
+  ): OpenIdConnectApplicationAccessPolicyConnection
+    @listSize(
+      assumedSize: 100
+      slicingArguments: ["first", "last"]
+      slicingArgumentDefaultValue: 100
+      sizedFields: ["edges", "nodes"]
+      requireOneSlicingArgument: false
+    )
   updatedAt: DateTime!
   userAccessPolicies(
+    "Returns the elements in the list that come after the specified cursor."
+    after: String
+    "Returns the elements in the list that come before the specified cursor."
+    before: String
+    "Returns the first _n_ elements from the list."
+    first: Int
+    "Returns the last _n_ elements from the list."
+    last: Int
     order: [UserAccessPolicySortInput!]
     where: UserAccessPolicyPropositionInput
-  ): [UserAccessPolicy!]!
+  ): UserAccessPolicyConnection
+    @listSize(
+      assumedSize: 100
+      slicingArguments: ["first", "last"]
+      slicingArgumentDefaultValue: 100
+      sizedFields: ["edges", "nodes"]
+      requireOneSlicingArgument: false
+    )
   uuid: Uuid!
 }
 
@@ -1295,7 +1340,7 @@ type OpenEndedDateTimeRange {
 
 type OpenIdConnectApplication {
   clientId: String!
-  name: String
+  displayName: String
   uuid: Uuid!
 }
 
@@ -2066,10 +2111,12 @@ input ConfigureDataAccessPoliciesPropositionInput {
   and: [ConfigureDataAccessPoliciesPropositionInput!]
   calorimetricData: CalorimetricDataPropositionInput
   combinator: LogicalCombinatorPropositionInput
+  createdAt: DateTimePropositionInput
   dataId: UuidPropositionInput
   dataKind: NullableOfDataKindPropositionInput
   geometricData: GeometricDataPropositionInput
   hygrothermalData: HygrothermalDataPropositionInput
+  id: UuidPropositionInput
   institutionAccessPolicies: InstitutionAccessPoliciesPropositionInput
   isAnyoneAllowed: BooleanPropositionInput
   isGlobal: BooleanPropositionInput
@@ -2079,6 +2126,7 @@ input ConfigureDataAccessPoliciesPropositionInput {
   opticalData: OpticalDataPropositionInput
   or: [ConfigureDataAccessPoliciesPropositionInput!]
   photovoltaicData: PhotovoltaicDataPropositionInput
+  updatedAt: DateTimePropositionInput
   userAccessPolicies: UserAccessPoliciesPropositionInput
 }
 
@@ -2196,12 +2244,15 @@ input CreateResponseApprovalsPropositionInput {
   appliedMethod: AppliedMethodPropositionInput
   approvals: DataApprovalsPropositionInput
   componentId: UuidPropositionInput
+  createdAt: DateTimePropositionInput
   creatorId: UuidPropositionInput
   description: StringPropositionInput
+  id: UuidPropositionInput
   locale: StringPropositionInput
   name: StringPropositionInput
   or: [CreateResponseApprovalsPropositionInput!]
   resources: GetHttpsResourcesPropositionInput
+  updatedAt: DateTimePropositionInput
   userId: UuidPropositionInput
   warnings: StringsPropositionInput
 }
@@ -2297,10 +2348,12 @@ input DataAccessPolicyPropositionInput {
   and: [DataAccessPolicyPropositionInput!]
   calorimetricData: CalorimetricDataPropositionInput
   combinator: LogicalCombinatorPropositionInput
+  createdAt: DateTimePropositionInput
   dataId: UuidPropositionInput
   dataKind: NullableOfDataKindPropositionInput
   geometricData: GeometricDataPropositionInput
   hygrothermalData: HygrothermalDataPropositionInput
+  id: UuidPropositionInput
   institutionAccessPolicies: InstitutionAccessPoliciesPropositionInput
   isAnyoneAllowed: BooleanPropositionInput
   isGlobal: BooleanPropositionInput
@@ -2310,6 +2363,7 @@ input DataAccessPolicyPropositionInput {
   opticalData: OpticalDataPropositionInput
   or: [DataAccessPolicyPropositionInput!]
   photovoltaicData: PhotovoltaicDataPropositionInput
+  updatedAt: DateTimePropositionInput
   userAccessPolicies: UserAccessPoliciesPropositionInput
 }
 
@@ -2385,8 +2439,11 @@ Note that durations are represented in the
 [ISO 8601 duration format](https://scalars.graphql.org/chillicream/duration.html#sec-Result-spec)
 """
 input DataAccessPolicySortInput {
+  createdAt: SortEnumType @cost(weight: "10")
   dataId: SortEnumType @cost(weight: "10")
   dataKind: SortEnumType @cost(weight: "10")
+  id: SortEnumType @cost(weight: "10")
+  updatedAt: SortEnumType @cost(weight: "10")
 }
 
 input DataApprovalPropositionInput {
@@ -2583,6 +2640,7 @@ input GetHttpsResourcePropositionInput {
   appliedConversionMethod: ToTreeVertexAppliedConversionMethodPropositionInput
   archivedFilesMetaInformation: FilesMetaInformationPropositionInput
   calorimetricData: CalorimetricDataPropositionInput
+  createdAt: DateTimePropositionInput
   dataFormatId: UuidPropositionInput
   dataId: UuidPropositionInput
   dataKind: DataKindPropositionInput
@@ -2590,11 +2648,13 @@ input GetHttpsResourcePropositionInput {
   geometricData: GeometricDataPropositionInput
   hashValue: StringPropositionInput
   hygrothermalData: HygrothermalDataPropositionInput
+  id: UuidPropositionInput
   lifeCycleData: LifeCycleDataPropositionInput
   opticalData: OpticalDataPropositionInput
   or: [GetHttpsResourcePropositionInput!]
   parent: GetHttpsResourceTreeNonRootVertexPropositionInput
   photovoltaicData: PhotovoltaicDataPropositionInput
+  updatedAt: DateTimePropositionInput
 }
 
 input GetHttpsResourceSortInput {
@@ -2620,13 +2680,16 @@ input GetHttpsResourceTreeNonRootVertexPropositionInput {
   and: [GetHttpsResourceTreeNonRootVertexPropositionInput!]
   appliedConversionMethod: ToTreeVertexAppliedConversionMethodPropositionInput
   archivedFilesMetaInformation: FilesMetaInformationPropositionInput
+  createdAt: DateTimePropositionInput
   dataFormatId: UuidPropositionInput
   dataId: UuidPropositionInput
   dataKind: DataKindPropositionInput
   description: StringPropositionInput
   hashValue: StringPropositionInput
+  id: UuidPropositionInput
   or: [GetHttpsResourceTreeNonRootVertexPropositionInput!]
   parent: GetHttpsResourceTreeNonRootVertexPropositionInput
+  updatedAt: DateTimePropositionInput
 }
 
 input GetHttpsResourceTreeNonRootVertSortInput {
@@ -2688,17 +2751,23 @@ input InstitutionAccessPoliciesPropositionInput {
 input InstitutionAccessPolicyPropositionInput {
   accessCountSinceStartTime: CountSinceTimePropositionInput
   and: [InstitutionAccessPolicyPropositionInput!]
+  createdAt: DateTimePropositionInput
   dataAccessPolicy: DataAccessPolicyPropositionInput
+  id: UuidPropositionInput
   institutionId: UuidPropositionInput
   isAlwaysAllowed: BooleanPropositionInput
   isWithinAccessLimitInTimeSpan: BooleanPropositionInput
   isWithinTimeSpan: BooleanPropositionInput
   or: [InstitutionAccessPolicyPropositionInput!]
+  updatedAt: DateTimePropositionInput
   upperAccessLimitPerTimeDuration: UpperLimitPerDurationPropositionInput
 }
 
 input InstitutionAccessPolicySortInput {
+  createdAt: SortEnumType @cost(weight: "10")
+  id: SortEnumType @cost(weight: "10")
   institutionId: SortEnumType @cost(weight: "10")
+  updatedAt: SortEnumType @cost(weight: "10")
 }
 
 input IntPropositionInput {
@@ -2920,16 +2989,22 @@ input OpenIdConnectApplicationAccessPolicyPropositionInput {
   accessCountSinceStartTime: CountSinceTimePropositionInput
   and: [OpenIdConnectApplicationAccessPolicyPropositionInput!]
   clientId: StringPropositionInput
+  createdAt: DateTimePropositionInput
   dataAccessPolicy: DataAccessPolicyPropositionInput
+  id: UuidPropositionInput
   isAlwaysAllowed: BooleanPropositionInput
   isWithinAccessLimitInTimeSpan: BooleanPropositionInput
   isWithinTimeSpan: BooleanPropositionInput
   or: [OpenIdConnectApplicationAccessPolicyPropositionInput!]
+  updatedAt: DateTimePropositionInput
   upperAccessLimitPerTimeDuration: UpperLimitPerDurationPropositionInput
 }
 
 input OpenIdConnectApplicationAccessPolicySortInput {
   clientId: SortEnumType @cost(weight: "10")
+  createdAt: SortEnumType @cost(weight: "10")
+  id: SortEnumType @cost(weight: "10")
+  updatedAt: SortEnumType @cost(weight: "10")
 }
 
 input OpticalComponentSubtypePropositionInput {
@@ -3070,6 +3145,7 @@ input RecomputeGetHttpsResourceHashValuesPropositionInput {
   appliedConversionMethod: ToTreeVertexAppliedConversionMethodPropositionInput
   archivedFilesMetaInformation: FilesMetaInformationPropositionInput
   calorimetricData: CalorimetricDataPropositionInput
+  createdAt: DateTimePropositionInput
   dataFormatId: UuidPropositionInput
   dataId: UuidPropositionInput
   dataKind: DataKindPropositionInput
@@ -3077,11 +3153,13 @@ input RecomputeGetHttpsResourceHashValuesPropositionInput {
   geometricData: GeometricDataPropositionInput
   hashValue: StringPropositionInput
   hygrothermalData: HygrothermalDataPropositionInput
+  id: UuidPropositionInput
   lifeCycleData: LifeCycleDataPropositionInput
   opticalData: OpticalDataPropositionInput
   or: [RecomputeGetHttpsResourceHashValuesPropositionInput!]
   parent: GetHttpsResourceTreeNonRootVertexPropositionInput
   photovoltaicData: PhotovoltaicDataPropositionInput
+  updatedAt: DateTimePropositionInput
 }
 
 input ReferenceInput @oneOf {
@@ -3182,10 +3260,12 @@ input ResetDataAccessPoliciesPropositionInput {
   and: [ResetDataAccessPoliciesPropositionInput!]
   calorimetricData: CalorimetricDataPropositionInput
   combinator: LogicalCombinatorPropositionInput
+  createdAt: DateTimePropositionInput
   dataId: UuidPropositionInput
   dataKind: NullableOfDataKindPropositionInput
   geometricData: GeometricDataPropositionInput
   hygrothermalData: HygrothermalDataPropositionInput
+  id: UuidPropositionInput
   institutionAccessPolicies: InstitutionAccessPoliciesPropositionInput
   isAnyoneAllowed: BooleanPropositionInput
   isGlobal: BooleanPropositionInput
@@ -3195,6 +3275,7 @@ input ResetDataAccessPoliciesPropositionInput {
   opticalData: OpticalDataPropositionInput
   or: [ResetDataAccessPoliciesPropositionInput!]
   photovoltaicData: PhotovoltaicDataPropositionInput
+  updatedAt: DateTimePropositionInput
   userAccessPolicies: UserAccessPoliciesPropositionInput
 }
 
@@ -3391,12 +3472,15 @@ input UpdateResponseApprovalsPropositionInput {
   appliedMethod: AppliedMethodPropositionInput
   approvals: DataApprovalsPropositionInput
   componentId: UuidPropositionInput
+  createdAt: DateTimePropositionInput
   creatorId: UuidPropositionInput
   description: StringPropositionInput
+  id: UuidPropositionInput
   locale: StringPropositionInput
   name: StringPropositionInput
   or: [UpdateResponseApprovalsPropositionInput!]
   resources: GetHttpsResourcesPropositionInput
+  updatedAt: DateTimePropositionInput
   userId: UuidPropositionInput
   warnings: StringsPropositionInput
 }
@@ -3469,16 +3553,22 @@ input UserAccessPoliciesPropositionInput {
 input UserAccessPolicyPropositionInput {
   accessCountSinceStartTime: CountSinceTimePropositionInput
   and: [UserAccessPolicyPropositionInput!]
+  createdAt: DateTimePropositionInput
   dataAccessPolicy: DataAccessPolicyPropositionInput
+  id: UuidPropositionInput
   isAlwaysAllowed: BooleanPropositionInput
   isWithinAccessLimitInTimeSpan: BooleanPropositionInput
   isWithinTimeSpan: BooleanPropositionInput
   or: [UserAccessPolicyPropositionInput!]
+  updatedAt: DateTimePropositionInput
   upperAccessLimitPerTimeDuration: UpperLimitPerDurationPropositionInput
   userId: UuidPropositionInput
 }
 
 input UserAccessPolicySortInput {
+  createdAt: SortEnumType @cost(weight: "10")
+  id: SortEnumType @cost(weight: "10")
+  updatedAt: SortEnumType @cost(weight: "10")
   userId: SortEnumType @cost(weight: "10")
 }
 

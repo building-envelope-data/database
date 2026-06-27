@@ -13,6 +13,10 @@ public class GetHttpsResourceFilterType
     {
         base.Configure(descriptor);
         descriptor.Name(nameof(GetHttpsResourceFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
         descriptor.Field(_ => _.Description);
         descriptor.Field(_ => _.HashValue);
         descriptor.Field(_ => _.DataFormatId);

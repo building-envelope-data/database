@@ -1,71 +1,63 @@
-import { Scalars } from "../../__generated__/graphql";
+import { Scalars, SortEnumType } from "../../../__generated__/graphql";
 import {
   DataAccessPolicyDocument,
   DataAccessPolicyPartialFragment,
-} from "../../queries/accessPolicies.generated";
+} from "../../../queries/accessPolicies.generated";
 import { Skeleton, Result, Card, Button } from "antd";
 import { useQuery } from "@apollo/client/react";
-import { useQueryHandler } from "../../lib/hooks/useQueryHandler";
+import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import DataAccessPolicySummary from "./DataAccessPolicySummary";
-import EntityList from "../entities/EntityList";
-import EntityItem from "../entities/EntityItem";
-import LazyTabs, { LazyTabsProps } from "../LazyTabs";
-import UserAccessPolicySummary from "./UserAccessPolicySummary";
-import OpenIdConnectApplicationAccessPolicySummary from "./OpenIdConnectApplicationAccessPolicySummary";
-import InstitutionAccessPolicySummary from "./InstitutionAccessPolicySummary";
+import LazyTabs, { LazyTabsProps } from "../../LazyTabs";
 import { useMemo } from "react";
+import PaginatedUserAccessPolicies from "../user/PaginatedUserAccessPolicies";
+import PaginatedOpenIdConnectApplicationAccessPolicies from "../application/PaginatedOpenIdConnectApplicationAccessPolicies";
+import PaginatedInstitutionAccessPolicies from "../institution/PaginatedInstitutionAccessPolicies";
 
 const getTabs = (
   entity: DataAccessPolicyPartialFragment,
 ): LazyTabsProps["items"] => [
   {
     key: "userAccessPolicies",
-    count: entity.userAccessPolicies.length,
+    count: entity.userAccessPolicies?.totalCount,
     label: "User Access Policies",
     children: (
-      <EntityList
-        loading={false}
-        dataSource={entity.userAccessPolicies}
-        onReload={() => {}}
-        renderItem={(node) => (
-          <EntityItem>
-            <UserAccessPolicySummary entity={node} />
-          </EntityItem>
-        )}
+      <PaginatedUserAccessPolicies
+        where={{
+          dataAccessPolicy: {
+            id: { equalTo: entity.uuid },
+          },
+        }}
+        order={{ createdAt: SortEnumType.Desc }}
       />
     ),
   },
   {
     key: "institutionAccessPolicies",
-    count: entity.institutionAccessPolicies.length,
+    count: entity.institutionAccessPolicies?.totalCount,
     label: "Institution Access Policies",
     children: (
-      <EntityList
-        loading={false}
-        dataSource={entity.institutionAccessPolicies}
-        onReload={() => {}}
-        renderItem={(node) => (
-          <EntityItem>
-            <InstitutionAccessPolicySummary entity={node} />
-          </EntityItem>
-        )}
+      <PaginatedInstitutionAccessPolicies
+        where={{
+          dataAccessPolicy: {
+            id: { equalTo: entity.uuid },
+          },
+        }}
+        order={{ createdAt: SortEnumType.Desc }}
       />
     ),
   },
   {
     key: "openIdConnectApplicationAccessPolicies",
-    count: entity.openIdConnectApplicationAccessPolicies.length,
+    count: entity.openIdConnectApplicationAccessPolicies?.totalCount,
     label: "OpenID Connect Application Access Policies",
     children: (
-      <EntityList
-        loading={false}
-        dataSource={entity.openIdConnectApplicationAccessPolicies}
-        onReload={() => {}}
-        renderItem={(node) => (
-          <EntityItem>
-            <OpenIdConnectApplicationAccessPolicySummary entity={node} />
-          </EntityItem>
-        )}
+      <PaginatedOpenIdConnectApplicationAccessPolicies
+        where={{
+          dataAccessPolicy: {
+            id: { equalTo: entity.uuid },
+          },
+        }}
+        order={{ createdAt: SortEnumType.Desc }}
       />
     ),
   },
@@ -73,9 +65,13 @@ const getTabs = (
 
 interface DataAccessPolicyProps {
   dataId: Scalars["Uuid"]["input"] | null | undefined;
+  onDataPage?: boolean;
 }
 
-export default function DataAccessPolicy({ dataId }: DataAccessPolicyProps) {
+export default function DataAccessPolicy({
+  dataId,
+  onDataPage,
+}: DataAccessPolicyProps) {
   const queryVariables = {
     dataId,
   };
@@ -85,7 +81,6 @@ export default function DataAccessPolicy({ dataId }: DataAccessPolicyProps) {
   useQueryHandler({ error });
 
   const entity = data?.data;
-
   const tabs = useMemo(() => (!entity ? null : getTabs(entity)), [entity]);
 
   if (loading) {
@@ -110,7 +105,7 @@ export default function DataAccessPolicy({ dataId }: DataAccessPolicyProps) {
   return (
     <div>
       <Card style={{ marginBottom: "1em" }}>
-        <DataAccessPolicySummary entity={entity} />
+        <DataAccessPolicySummary entity={entity} onDataPage={onDataPage} />
       </Card>
       {/* <QueryToolbar */}
       {/*   query={DataAccessPolicyDocument} */}

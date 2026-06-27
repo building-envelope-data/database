@@ -5,6 +5,7 @@ import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import HygrothermalDataSummary from "./HygrothermalDataSummary";
 import QueryToolbar from "../../QueryToolbar";
+import LocalAndGlobalDataAccessPolicies from "../../accessPolicies/LocalAndGlobalDataAccessPolicies";
 
 interface HygrothermalDataProps {
   id: Scalars["Uuid"]["input"];
@@ -48,6 +49,7 @@ export default function HygrothermalData({ id }: HygrothermalDataProps) {
         query={HygrothermalDataDocument}
         variables={queryVariables}
       />
+      <LocalAndGlobalDataAccessPolicies dataId={entity.uuid} />
     </div>
   );
 }

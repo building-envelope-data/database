@@ -5,6 +5,7 @@ import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import PhotovoltaicDataSummary from "./PhotovoltaicDataSummary";
 import QueryToolbar from "../../QueryToolbar";
+import LocalAndGlobalDataAccessPolicies from "../../accessPolicies/LocalAndGlobalDataAccessPolicies";
 
 interface PhotovoltaicDataProps {
   id: Scalars["Uuid"]["input"];
@@ -48,6 +49,7 @@ export default function PhotovoltaicData({ id }: PhotovoltaicDataProps) {
         query={PhotovoltaicDataDocument}
         variables={queryVariables}
       />
+      <LocalAndGlobalDataAccessPolicies dataId={entity.uuid} />
     </div>
   );
 }

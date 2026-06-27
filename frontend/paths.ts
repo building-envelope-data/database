@@ -10,26 +10,20 @@ export default {
   antiforgeryToken: "/antiforgery/token" as Route,
   userInfo: "/user-info" as Route,
   database: "/database" as Route,
-  data({
-    uuid,
-    dataKind,
-  }: {
-    uuid: Scalars["Uuid"]["output"];
-    dataKind: DataKind;
-  }) {
+  data(dataKind: DataKind, id: Scalars["Uuid"]["output"]) {
     switch (dataKind) {
       case DataKind.CalorimetricData:
-        return this.calorimetricData(uuid);
+        return this.calorimetricData(id);
       case DataKind.GeometricData:
-        return this.geometricData(uuid);
+        return this.geometricData(id);
       case DataKind.HygrothermalData:
-        return this.hygrothermalData(uuid);
+        return this.hygrothermalData(id);
       case DataKind.LifeCycleData:
-        return this.lifeCycleData(uuid);
+        return this.lifeCycleData(id);
       case DataKind.OpticalData:
-        return this.opticalData(uuid);
+        return this.opticalData(id);
       case DataKind.PhotovoltaicData:
-        return this.photovoltaicData(uuid);
+        return this.photovoltaicData(id);
       default:
         return assertNever(dataKind);
     }
@@ -54,6 +48,7 @@ export default {
     `/data/photovoltaic/${encodeURIComponent(String(id))}` as Route,
   createData: "/data/create" as Route,
   uploadFile: "/upload-file" as Route,
+  accessPolicies: "/access-policies" as Route,
   resource: (id: Scalars["Uuid"]["output"]) =>
     `/api/resources/${encodeURIComponent(String(id))}` as Route,
   login: "/connect/login" as Route,

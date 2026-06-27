@@ -9,7 +9,7 @@ import Link from "next/link";
 
 interface Props {
   entity: {
-    uuid: Scalars["Uuid"]["output"];
+    uuid?: Scalars["Uuid"]["output"];
     name?: string | null;
     abbreviation?: string | null;
     description?: string | null;
@@ -31,9 +31,10 @@ export default function EntitySummary({
   breadcrumb,
   children,
 }: Props) {
-  const absoluteRoute = route
-    ? new URL(route(entity.uuid), new URL(window.location.href).origin)
-    : null;
+  const absoluteRoute =
+    route && entity.uuid
+      ? new URL(route(entity.uuid), new URL(window.location.href).origin)
+      : null;
 
   return (
     <div>
@@ -90,7 +91,7 @@ export default function EntitySummary({
               </div>
               <Space wrap align="center">
                 <Typography.Title level={4} style={{ margin: 0 }}>
-                  {route ? (
+                  {route && entity.uuid ? (
                     <Link href={route(entity.uuid)}>
                       {entity.name ?? "Unnamed"}
                     </Link>

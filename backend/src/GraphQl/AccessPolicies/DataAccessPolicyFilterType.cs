@@ -13,6 +13,10 @@ public class DataAccessPolicyFilterType
     {
         descriptor.BindFieldsExplicitly();
         descriptor.Name(nameof(DataAccessPolicyFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
         descriptor.Field(_ => _.IsGlobal);
         descriptor.Field(_ => _.IsNobodyAllowed);
         descriptor.Field(_ => _.IsAnyoneAllowed);

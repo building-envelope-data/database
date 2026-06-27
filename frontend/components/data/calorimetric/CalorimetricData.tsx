@@ -5,6 +5,7 @@ import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import CalorimetricDataSummary from "./CalorimetricDataSummary";
 import QueryToolbar from "../../QueryToolbar";
+import LocalAndGlobalDataAccessPolicies from "../../accessPolicies/LocalAndGlobalDataAccessPolicies";
 
 interface CalorimetricDataProps {
   id: Scalars["Uuid"]["input"];
@@ -48,6 +49,7 @@ export default function CalorimetricData({ id }: CalorimetricDataProps) {
         query={CalorimetricDataDocument}
         variables={queryVariables}
       />
+      <LocalAndGlobalDataAccessPolicies dataId={entity.uuid} />
     </div>
   );
 }

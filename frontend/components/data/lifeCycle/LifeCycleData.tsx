@@ -5,6 +5,7 @@ import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import LifeCycleDataSummary from "./LifeCycleDataSummary";
 import QueryToolbar from "../../QueryToolbar";
+import LocalAndGlobalDataAccessPolicies from "../../accessPolicies/LocalAndGlobalDataAccessPolicies";
 
 interface LifeCycleDataProps {
   id: Scalars["Uuid"]["input"];
@@ -45,6 +46,7 @@ export default function LifeCycleData({ id }: LifeCycleDataProps) {
         <LifeCycleDataSummary entity={entity} />
       </Card>
       <QueryToolbar query={LifeCycleDataDocument} variables={queryVariables} />
+      <LocalAndGlobalDataAccessPolicies dataId={entity.uuid} />
     </div>
   );
 }

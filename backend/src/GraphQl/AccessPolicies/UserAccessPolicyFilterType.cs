@@ -12,6 +12,10 @@ public sealed class UserAccessPolicyFilterType
     )
     {
         descriptor.BindFieldsExplicitly();
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
         descriptor.Name(nameof(UserAccessPolicyFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
         descriptor.Field(_ => _.UserId);
         descriptor.Field(_ => _.IsAlwaysAllowed);
