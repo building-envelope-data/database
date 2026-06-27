@@ -8,6 +8,7 @@ using Database.Data;
 using Database.Data.AccessPolicies;
 using Database.GraphQl.DataX;
 using Database.GraphQl.Extensions;
+using Database.GraphQl.Entities;
 using GreenDonut;
 using GreenDonut.Data;
 using HotChocolate;
@@ -18,7 +19,7 @@ using HotChocolate.Types;
 namespace Database.GraphQl.AccessPolicies;
 
 public sealed class DataAccessPolicyType
-    : ObjectType<DataAccessPolicy>
+    : EntityType<DataAccessPolicy, DataAccessPolicyByIdDataLoader>
 {
     protected override void Configure(
         IObjectTypeDescriptor<DataAccessPolicy> descriptor

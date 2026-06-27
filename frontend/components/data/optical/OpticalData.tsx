@@ -1,11 +1,12 @@
 import { Scalars } from "../../../__generated__/graphql";
 import { OpticalDataDocument } from "../../../queries/data.generated";
-import { Skeleton, Result, Card } from "antd";
+import { Skeleton, Result, Card, Button, Divider, Typography } from "antd";
 import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../../lib/hooks/useQueryHandler";
 import OpticalDataSummary from "./OpticalDataSummary";
 import OpticalDataRibbon from "./OpticalDataRibbon";
 import QueryToolbar from "../../QueryToolbar";
+import DataAccessPolicy from "../../accessPolicies/DataAccessPolicy";
 
 interface OpticalDataProps {
   id: Scalars["Uuid"]["input"];
@@ -15,7 +16,7 @@ export default function OpticalData({ id }: OpticalDataProps) {
   const queryVariables = {
     id,
   };
-  const { loading, error, data } = useQuery(OpticalDataDocument, {
+  const { loading, error, data, refetch } = useQuery(OpticalDataDocument, {
     variables: queryVariables,
   });
   useQueryHandler({ error });
@@ -31,6 +32,11 @@ export default function OpticalData({ id }: OpticalDataProps) {
         status="500"
         title="500"
         subTitle="Sorry, something went wrong."
+        extra={
+          <Button loading={loading} onClick={() => refetch()}>
+            Reload
+          </Button>
+        }
       />
     );
   }
@@ -43,6 +49,10 @@ export default function OpticalData({ id }: OpticalDataProps) {
         </Card>
       </OpticalDataRibbon>
       <QueryToolbar query={OpticalDataDocument} variables={queryVariables} />
+      <Divider />
+      <DataAccessPolicy dataId={theData.uuid} />
+      <Divider />
+      <DataAccessPolicy dataId={null} />
     </div>
   );
 }

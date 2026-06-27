@@ -17,11 +17,12 @@ public static class OpenIdConnectApplicationDataLoader
         QueryByIdDataLoader.GetGraphQlEndpoint(appSettings);
 
     public sealed record OpenIdConnectApplication(
+        Guid Uuid,
         [property: GraphQLIgnore] string Id,
         string? Name
     ) : IIdNode<string>
     {
-        string ClientId => Id;
+        public string ClientId => Id;
     }
 
     private sealed record OpenIdConnectApplicationsData(

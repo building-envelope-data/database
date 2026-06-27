@@ -1,5 +1,5 @@
 import { DatabaseDocument } from "../../queries/databases.generated";
-import { Skeleton, Result, Card } from "antd";
+import { Skeleton, Result, Card, Button } from "antd";
 import { useQuery } from "@apollo/client/react";
 import { useQueryHandler } from "../../lib/hooks/useQueryHandler";
 import DatabaseSummary from "./DatabaseSummary";
@@ -7,7 +7,7 @@ import QueryToolbar from "../QueryToolbar";
 
 export default function Database() {
   const queryVariables = {};
-  const { loading, error, data } = useQuery(DatabaseDocument, {
+  const { loading, error, data, refetch } = useQuery(DatabaseDocument, {
     variables: queryVariables,
   });
   useQueryHandler({ error });
@@ -23,6 +23,11 @@ export default function Database() {
         status="500"
         title="500"
         subTitle="Sorry, something went wrong."
+        extra={
+          <Button loading={loading} onClick={() => refetch()}>
+            Reload
+          </Button>
+        }
       />
     );
   }

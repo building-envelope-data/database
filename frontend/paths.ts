@@ -10,6 +10,30 @@ export default {
   antiforgeryToken: "/antiforgery/token" as Route,
   userInfo: "/user-info" as Route,
   database: "/database" as Route,
+  data({
+    uuid,
+    dataKind,
+  }: {
+    uuid: Scalars["Uuid"]["output"];
+    dataKind: DataKind;
+  }) {
+    switch (dataKind) {
+      case DataKind.CalorimetricData:
+        return this.calorimetricData(uuid);
+      case DataKind.GeometricData:
+        return this.geometricData(uuid);
+      case DataKind.HygrothermalData:
+        return this.hygrothermalData(uuid);
+      case DataKind.LifeCycleData:
+        return this.lifeCycleData(uuid);
+      case DataKind.OpticalData:
+        return this.opticalData(uuid);
+      case DataKind.PhotovoltaicData:
+        return this.photovoltaicData(uuid);
+      default:
+        return assertNever(dataKind);
+    }
+  },
   allCalorimetricData: "/data/calorimetric" as Route,
   calorimetricData: (id: Scalars["Uuid"]["output"]) =>
     `/data/calorimetric/${encodeURIComponent(String(id))}` as Route,
@@ -67,6 +91,8 @@ export default {
     user: (id: Scalars["Uuid"]["output"]) =>
       new URL(`/users/${encodeURIComponent(String(id))}`, metabaseUrl)
         .href as Route,
+    openIdConnectApplication: (id: Scalars["Uuid"]["output"]) =>
+      `/open-id-connect/application/${encodeURIComponent(id)}` as Route,
     allData: "/data" as Route,
     data(
       databaseId: Scalars["Uuid"]["output"],

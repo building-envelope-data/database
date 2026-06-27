@@ -1,13 +1,13 @@
 import { useQuery } from "@apollo/client/react";
 import Layout from "../components/Layout";
 import { CurrentUserInfoDocument } from "../queries/currentUser.generated";
-import { Skeleton, Result, Descriptions, Typography } from "antd";
+import { Skeleton, Result, Descriptions, Typography, Button } from "antd";
 import { PageHeader } from "@ant-design/pro-layout";
 import paths from "../paths";
 import { useQueryHandler } from "../lib/hooks/useQueryHandler";
 
 function Page() {
-  const { loading, error, data } = useQuery(CurrentUserInfoDocument);
+  const { loading, error, data, refetch } = useQuery(CurrentUserInfoDocument);
   useQueryHandler({ error });
   const currentUserInfo = data?.currentUserInfo;
 
@@ -21,6 +21,11 @@ function Page() {
         status="500"
         title="500"
         subTitle="Sorry, something went wrong."
+        extra={
+          <Button loading={loading} onClick={() => refetch()}>
+            Reload
+          </Button>
+        }
       />
     );
   }

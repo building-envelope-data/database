@@ -1,0 +1,112 @@
+fragment UserAccessPolicyPartial on UserAccessPolicy {
+  id
+  uuid
+  userId
+  user {
+    uuid
+    name
+  }
+  isAlwaysAllowed
+  isWithinAccessLimitInTimeSpan
+  isWithinTimeSpan
+  upperAccessLimitPerTimeDuration {
+    upperLimit
+    duration
+  }
+  accessCountSinceStartTime {
+    accessCount
+    startTime
+  }
+}
+
+fragment InstitutionAccessPolicyPartial on InstitutionAccessPolicy {
+  id
+  uuid
+  institutionId
+  institution {
+    uuid
+    name
+  }
+  isAlwaysAllowed
+  isWithinAccessLimitInTimeSpan
+  isWithinTimeSpan
+  upperAccessLimitPerTimeDuration {
+    upperLimit
+    duration
+  }
+  accessCountSinceStartTime {
+    accessCount
+    startTime
+  }
+}
+
+fragment OpenIdConnectApplicationAccessPolicyPartial on OpenIdConnectApplicationAccessPolicy {
+  id
+  uuid
+  clientId
+  client {
+    uuid
+    name
+  }
+  isAlwaysAllowed
+  isWithinAccessLimitInTimeSpan
+  isWithinTimeSpan
+  upperAccessLimitPerTimeDuration {
+    upperLimit
+    duration
+  }
+  accessCountSinceStartTime {
+    accessCount
+    startTime
+  }
+}
+
+fragment DataAccessPoliciesPartial on DataAccessPolicy {
+  id
+  uuid
+  data {
+    uuid
+    kind
+  }
+  combinator
+  isAnyoneAllowed
+  isNobodyAllowed
+  userAccessPolicies {
+    ...UserAccessPolicyPartial
+  }
+  institutionAccessPolicies {
+    ...InstitutionAccessPolicyPartial
+  }
+  openIdConnectApplicationAccessPolicies {
+    ...OpenIdConnectApplicationAccessPolicyPartial
+  }
+}
+
+fragment DataAccessPolicyPartial on DataAccessPolicy {
+  ...DataAccessPoliciesPartial
+}
+
+query DataAccessPolicies(
+  $first: Int
+  $after: String
+  $where: DataAccessPolicyPropositionInput
+) {
+  connection: dataAccessPolicies(first: $first, after: $after, where: $where) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...DataAccessPoliciesPartial
+      }
+    }
+  }
+}
+
+query DataAccessPolicy($dataId: Uuid) {
+  data: dataAccessPolicy(dataId: $dataId) {
+    ...DataAccessPolicyPartial
+  }
+}
