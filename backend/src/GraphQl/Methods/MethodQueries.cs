@@ -1,14 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Net.Mime;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Database.ApiRequests;
-using Database.Enumerations;
 using Database.Json;
 using Database.Services;
-using GraphQL;
 using GraphQL.Client.Abstractions.Utilities;
 using HotChocolate;
 using HotChocolate.Resolvers;
@@ -21,7 +21,10 @@ public enum CalculateMethodErrorCode
 {
     UNKNOWN_METHOD,
     UNKNOWN_DATABASE,
-    DATA_QUERY_FAILED
+    UNKNOWN_DATA,
+    UNSUPPORTED_DATA_FORMAT,
+    HASH_VALUE_CALCULATION_FAILED,
+    HASH_VALUE_MISMATHCH
 }
 
 public sealed record CalculateMethodError(
@@ -39,28 +42,6 @@ public sealed record CalculateMethodPayload(
 [ExtendObjectType(nameof(Query))]
 public sealed class MethodQueries
 {
-    private sealed record DataData(
-        Data? Data
-    );
-
-    private sealed record Data(
-        ResourceTree ResourceTree
-    );
-
-    private sealed record ResourceTree(
-        Root Root
-    );
-
-    private sealed record Root(
-        Resource Value
-    );
-
-    private sealed record Resource(
-        string HashValue,
-        Uri Locator,
-        Guid DataFormatId
-    );
-
     public async Task<CalculateMethodPayload> CalculateMethodWithDataUploadAsync(
         Guid methodId,
         [GraphQLType<NonNullType<UploadType>>] IFile data,
@@ -96,9 +77,10 @@ public sealed class MethodQueries
         AppSettings appSettings,
         MethodFactory methodFactory,
         ApiRequestService apiRequestService,
-        IDatabaseByIdDataLoader databaseById,
+        IDataByDatabaseAndIdAndKindDataLoader dataByDatabaseAndIdAndKind,
         QueryData queryData,
         IResolverContext resolverContext,
+        UrlEncoder urlEncoder,
         CancellationToken cancellationToken
     )
     {
@@ -114,9 +96,11 @@ public sealed class MethodQueries
                 )]
             );
         }
+        // We fetch the data through the metabase because, if possible, it adds
+        // sanitized authorization headers.
         var database = await GraphQlRequestHelper.TransformExceptionsAsync(
-            () => databaseById.LoadAsync(
-                dataReference.DatabaseId,
+            () => dataByDatabaseAndIdAndKind.LoadAsync(
+                (dataReference.DatabaseId, dataReference.DataId, dataReference.DataKind),
                 cancellationToken
             ),
             resolverContext,
@@ -133,68 +117,60 @@ public sealed class MethodQueries
                 )]
             );
         }
-        var query = ConstructQuery(dataReference.DataKind);
-        GraphQLResponse<DataData>? response;
-        response = await GraphQlRequestHelper.TransformExceptionsAsync(
-            () => queryData.Do<DataData>(
-                database.Locator,
-                dataReference.DataId,
-                query,
-                cancellationToken
-            ),
-            resolverContext,
-            database.Locator
-        );
-        if (response.Data?.Data is null)
+        if (database.Data is null)
         {
-            if (response.Errors?.Length > 0)
-            {
-                foreach (var error in response.Errors)
-                {
-                    var errorBuilder = ErrorBuilder.New()
-                        .SetCode("DATABASE_QUERY_ERROR")
-                        // .SetPath(error.Path) // TODO Add the error path. Just using `error.Path` does not work as it contains non-"GraphQlName"s according to HotChocolate sometimes.
-                        .SetMessage($"The GraphQL response received from the database {database.Locator} for the query {query} reported the error {error.Message}.");
-                    resolverContext.ReportError(errorBuilder.Build());
-                }
-            }
             return new CalculateMethodPayload(
                 null,
                 [new CalculateMethodError(
-                    CalculateMethodErrorCode.DATA_QUERY_FAILED,
-                    $"Failed to query database {database.Locator} for the data.",
+                    CalculateMethodErrorCode.UNKNOWN_DATA,
+                    $"The data is unknown.",
+                    [nameof(dataReference), nameof(dataReference.DataId).ToLowerFirst()]
+                )]
+            );
+        }
+        // TODO Support non-JSON data formats.
+        var dataFormat = database.Data.ResourceTree.Root.Value.DataFormat;
+        if (dataFormat.MediaType != MediaTypeNames.Application.Json)
+        {
+            return new CalculateMethodPayload(
+                null,
+                [new CalculateMethodError(
+                    CalculateMethodErrorCode.UNSUPPORTED_DATA_FORMAT,
+                    $"The data format {dataFormat.Id} of the root resource is unsupported because its media type is not '{MediaTypeNames.Application.Json}' but '{dataFormat.MediaType}'.",
                     [nameof(dataReference)]
                 )]
             );
         }
-        var locator = response.Data.Data.ResourceTree.Root.Value.Locator;
-        // TODO The locator could also point to a non-JSON resource. Support those also: response.Data.Data.ResourceTree.Root.Value.DataFormatId
-        // TODO Check that the data has the hash value: response.Data.Data.ResourceTree.Root.Value.HashValue;
-        var data = await apiRequestService.PerformHttpGetRequest(
+        // We route to `response.Data.Data.ResourceTree.Root.Value.Locator`
+        // through the metabase because, if possible, it adds sanitized
+        // authorization headers.
+        var locator = appSettings.MetabaseGetHttpsResourceEndpoint(database.Data.ResourceTree.Root.VertexId, dataReference.ToDomainModel(), urlEncoder);
+        var (resourceContent, sha256HashValue) = await apiRequestService.PerformHttpGetRequest(
             locator, cancellationToken
         );
-        var result = method.Calculate(data);
+        if (sha256HashValue is null)
+        {
+            return new CalculateMethodPayload(
+                null,
+                [new CalculateMethodError(
+                    CalculateMethodErrorCode.HASH_VALUE_CALCULATION_FAILED,
+                    $"Could not calculate the SHA256 hash value of the root resource, which is needed to make sure that the data was not tempered with.",
+                    [nameof(dataReference)]
+                )]
+            );
+        }
+        if (sha256HashValue != database.Data.ResourceTree.Root.Value.HashValue)
+        {
+            return new CalculateMethodPayload(
+                null,
+                [new CalculateMethodError(
+                    CalculateMethodErrorCode.HASH_VALUE_MISMATHCH,
+                    $"The SHA256 hash value '{sha256HashValue}' of the received root-resource content is different from the expected value '{database.Data.ResourceTree.Root.Value.HashValue}'.",
+                    [nameof(dataReference)]
+                )]
+            );
+        }
+        var result = method.Calculate(resourceContent);
         return new CalculateMethodPayload(result, null);
-    }
-
-    private static string ConstructQuery(DataKind dataKind)
-    {
-        var name = Enum.GetName(dataKind)![..^"_DATA".Length].ToLowerInvariant();
-        return
-            $$"""
-                query Data($id: Uuid!) {
-                  data: {{name}}Data(id: $id) {
-                    resourceTree {
-                      root {
-                        value {
-                          hashValue
-                          locator
-                          dataFormatId
-                        }
-                      }
-                    }
-                  }
-                }
-            """;
     }
 }

@@ -17,13 +17,34 @@ public static class DataDataLoader
     public static Uri GetGraphQlEndpoint(AppSettings appSettings) =>
         appSettings.MetabaseGraphQlEndpoint;
 
+    public sealed record DataFormat(
+        Guid Id,
+        string MediaType
+    );
+
+    public sealed record Resource(
+        string HashValue,
+        Uri Locator,
+        DataFormat DataFormat
+    );
+
+    public sealed record Root(
+        string VertexId,
+        Resource Value
+    );
+
+    public sealed record ResourceTree(
+        Root Root
+    );
+
     public sealed record Data(
-        Guid Uuid,
-        DataKind Kind
+        Guid Id,
+        DataKind Kind,
+        ResourceTree ResourceTree
     );
 
     public sealed record Database(
-        Guid Uuid,
+        Guid Id,
         Data? Data
     );
 

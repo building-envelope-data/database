@@ -195,7 +195,7 @@ public sealed class DataAccessPolicyType
         [UsePaging]
         [UseFiltering<UserAccessPolicyFilterType>]
         [UseSorting<UserAccessPolicySortType>]
-        public static async ValueTask<HotChocolate.Types.Pagination.Connection<UserAccessPolicy>> GetUserAccessPoliciesAsync(
+        public static async Task<HotChocolate.Types.Pagination.Connection<UserAccessPolicy>> GetUserAccessPoliciesAsync(
             [Parent] DataAccessPolicy dataAccessPolicy,
             IResolverContext resolverContext,
             ApplicationDbContext databaseContext,
@@ -219,7 +219,7 @@ public sealed class DataAccessPolicyType
         [UsePaging]
         [UseFiltering<InstitutionAccessPolicyFilterType>]
         [UseSorting<InstitutionAccessPolicySortType>]
-        public static async ValueTask<HotChocolate.Types.Pagination.Connection<InstitutionAccessPolicy>> GetInstitutionAccessPoliciesAsync(
+        public static async Task<HotChocolate.Types.Pagination.Connection<InstitutionAccessPolicy>> GetInstitutionAccessPoliciesAsync(
             [Parent] DataAccessPolicy dataAccessPolicy,
             IResolverContext resolverContext,
             ApplicationDbContext databaseContext,
@@ -243,7 +243,7 @@ public sealed class DataAccessPolicyType
         [UsePaging]
         [UseFiltering<OpenIdConnectApplicationAccessPolicyFilterType>]
         [UseSorting<OpenIdConnectApplicationAccessPolicySortType>]
-        public static async ValueTask<HotChocolate.Types.Pagination.Connection<OpenIdConnectApplicationAccessPolicy>> GetOpenIdConnectApplicationAccessPoliciesAsync(
+        public static async Task<HotChocolate.Types.Pagination.Connection<OpenIdConnectApplicationAccessPolicy>> GetOpenIdConnectApplicationAccessPoliciesAsync(
             [Parent] DataAccessPolicy dataAccessPolicy,
             IResolverContext resolverContext,
             ApplicationDbContext databaseContext,

@@ -1,6 +1,8 @@
 // Inspired by https://weblog.west-wind.com/posts/2017/dec/12/easy-configuration-binding-in-aspnet-core-revisited
 
 using System;
+using System.Text.Encodings.Web;
+using Database.Data;
 using Npgsql;
 
 namespace Database;
@@ -19,6 +21,17 @@ public sealed record AppSettings
     public string MetabaseHost { private get; init; } = "";
     public Uri MetabaseHostUri => new($"https://{MetabaseHost}", UriKind.Absolute);
     public Uri MetabaseGraphQlEndpoint => new UriBuilder(MetabaseHostUri) { Path = GraphQlPathSegment }.Uri;
+    public Uri MetabaseGetHttpsResourceEndpoint(
+        string vertexId,
+        CrossDatabaseDataReference data,
+        UrlEncoder urlEncoder
+    )
+    => new UriBuilder(MetabaseHostUri)
+    {
+        Path = $"/api/resources/{urlEncoder.Encode(vertexId)}",
+        Query = $"?dataId={urlEncoder.Encode(data.DataId.ToString("D"))}&dataKind={urlEncoder.Encode(data.DataKind.ToString())}&databaseId={urlEncoder.Encode(data.DatabaseId.ToString("D"))}"
+    }
+    .Uri;
 
     public Guid DatabaseId { get; init; }
     public Guid OperatorId { get; init; }

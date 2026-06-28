@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Mime;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -82,7 +83,7 @@ public sealed class ApiRequestService(
         );
     }
 
-    public Task<JsonElement> PerformHttpGetRequest(
+    public Task<(JsonElement Json, string? Sha256Hash)> PerformHttpGetRequest(
         Uri url,
         CancellationToken cancellationToken
     )
@@ -92,11 +93,15 @@ public sealed class ApiRequestService(
             url,
             async httpResponseContent =>
             {
+                using var contentStream = await httpResponseContent.ReadAsStreamAsync();
+                using var sha256 = SHA256.Create();
+                using var cryptoStream = new CryptoStream(contentStream, sha256, CryptoStreamMode.Read);
                 using var document = await JsonDocument.ParseAsync(
-                    await httpResponseContent.ReadAsStreamAsync(),
+                    cryptoStream,
                     JsonDocumentSettings.Lax
                 );
-                return document.RootElement.Clone();
+                var sha256Hash = sha256.Hash is null ? null : Convert.ToHexString(sha256.Hash);
+                return (document.RootElement.Clone(), sha256Hash);
             },
             null,
             cancellationToken
@@ -158,23 +163,11 @@ public sealed class ApiRequestService(
         CancellationToken cancellationToken
     )
     {
-        using var httpClient = httpClientFactory.CreateClient(CustomHttpClient);
-        var bearerToken = httpContextAccessor.HttpContext?.ExtractBearerToken();
+        using var httpClient = CreateHttpClientAsync();
         using var httpRequestMessage = new HttpRequestMessage(
             httpMethod,
             uri
         );
-        httpRequestMessage.Headers.Add(
-            HeaderNames.Origin,
-            appSettings.Uri.AbsoluteUri
-        );
-        if (bearerToken is not null)
-        {
-            httpRequestMessage.Headers.Authorization = new AuthenticationHeaderValue(
-                OpenIdConnectConstants.AuthorizationHeaderBearer,
-                bearerToken
-            );
-        }
         httpRequestMessage.Content = httpContent;
         using var httpResponseMessage =
             await httpClient.SendAsync(httpRequestMessage, cancellationToken);
@@ -187,6 +180,24 @@ public sealed class ApiRequestService(
             );
         }
         return await read(httpResponseMessage.Content);
+    }
+
+    private HttpClient CreateHttpClientAsync()
+    {
+        var httpClient = httpClientFactory.CreateClient(CustomHttpClient);
+        var accessToken = httpContextAccessor.HttpContext?.ExtractBearerToken();
+        httpClient.DefaultRequestHeaders.Add(
+            HeaderNames.Origin,
+            appSettings.Uri.AbsoluteUri
+        );
+        if (accessToken is not null)
+        {
+            httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                OpenIdConnectConstants.AuthorizationHeaderBearer,
+                accessToken
+            );
+        }
+        return httpClient;
     }
 
     private static ByteArrayContent MakeGraphQlJsonHttpContent<TContent>(

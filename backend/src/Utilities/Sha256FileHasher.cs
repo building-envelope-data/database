@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.Contracts;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
@@ -9,6 +10,7 @@ namespace Database.Utilities;
 
 public static class Sha256FileHasher
 {
+    [Pure]
     public static async Task<string> ComputeForFile(string filePath, CancellationToken cancellationToken)
     {
         if (!File.Exists(filePath))
@@ -22,6 +24,7 @@ public static class Sha256FileHasher
         );
     }
 
+    [Pure]
     public static string ComputeForString(string content)
     {
         return Convert.ToHexString(
