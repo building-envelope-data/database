@@ -54,6 +54,8 @@ export default {
   login: "/connect/login" as Route,
   logout: "/connect/logout" as Route,
   graphQl: "/graphql/" as Route,
+  openApiSchema: "/openapi/v1.json" as Route,
+  openApiPlayground: (tag?: string) => `/openapi/docs/${tag}` as Route,
   metabase: {
     home: metabaseUrl,
     graphQl: new URL("/graphql/", metabaseUrl).href as Route,

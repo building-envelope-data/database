@@ -52,7 +52,7 @@ function Page() {
               <Input
                 style={{ fontFamily: "monospace" }}
                 maxLength={36}
-                placeholder="xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx"
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
               />
             </Form.Item>
             <Form.Item name="file" label="File">
@@ -67,6 +67,27 @@ function Page() {
               </Upload>
             </Form.Item>
           </Form>
+          <Typography.Paragraph style={{ maxWidth: "75ch" }}>
+            The form sends a <code>multipart/form</code> post request to the{" "}
+            <abbr title="Representational State Transfer">RESTful</abbr>{" "}
+            endpoint{" "}
+            <code>
+              {paths.resource("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")}
+            </code>
+            . It is documented in the{" "}
+            <Typography.Link href={paths.openApiSchema}>
+              OpenAPI schema
+            </Typography.Link>{" "}
+            and can be played with on{" "}
+            <Typography.Link
+              href={paths.openApiPlayground(
+                "#tag/gethttpsresources/POST/api/resources/{id}",
+              )}
+            >
+              OpenAPI playground
+            </Typography.Link>
+            .
+          </Typography.Paragraph>
         </Card>
       </Flex>
     </Layout>
