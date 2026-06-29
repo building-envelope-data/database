@@ -562,7 +562,7 @@ type CalorimetricData implements Node & Data {
     openIdConnectClientId: String
     userId: Uuid
   ): Boolean!
-  IsAnyoneAllowed: Boolean!
+  IsEveryoneAllowed: Boolean!
   IsNobodyAllowed: Boolean!
   kind: DataKind!
   locale: Locale!
@@ -901,7 +901,7 @@ type DataAccessPolicy implements Node {
     openIdConnectClientId: String
     userId: Uuid
   ): Boolean!
-  isAnyoneAllowed: Boolean!
+  isEveryoneAllowed: Boolean!
   isGlobal: Boolean!
   isNobodyAllowed: Boolean!
   openIdConnectApplicationAccessPolicies(
@@ -1057,7 +1057,7 @@ type GeometricData implements Node & Data {
     openIdConnectClientId: String
     userId: Uuid
   ): Boolean!
-  IsAnyoneAllowed: Boolean!
+  IsEveryoneAllowed: Boolean!
   IsNobodyAllowed: Boolean!
   kind: DataKind!
   locale: Locale!
@@ -1171,7 +1171,7 @@ type HygrothermalData implements Node & Data {
     openIdConnectClientId: String
     userId: Uuid
   ): Boolean!
-  IsAnyoneAllowed: Boolean!
+  IsEveryoneAllowed: Boolean!
   IsNobodyAllowed: Boolean!
   kind: DataKind!
   locale: Locale!
@@ -1278,7 +1278,7 @@ type LifeCycleData implements Node & Data {
     openIdConnectClientId: String
     userId: Uuid
   ): Boolean!
-  IsAnyoneAllowed: Boolean!
+  IsEveryoneAllowed: Boolean!
   IsNobodyAllowed: Boolean!
   kind: DataKind!
   locale: Locale!
@@ -1401,7 +1401,7 @@ type OpticalData implements Node & Data {
     openIdConnectClientId: String
     userId: Uuid
   ): Boolean!
-  IsAnyoneAllowed: Boolean!
+  IsEveryoneAllowed: Boolean!
   IsNobodyAllowed: Boolean!
   kind: DataKind!
   locale: Locale!
@@ -1472,7 +1472,7 @@ type PhotovoltaicData implements Node & Data {
     openIdConnectClientId: String
     userId: Uuid
   ): Boolean!
-  IsAnyoneAllowed: Boolean!
+  IsEveryoneAllowed: Boolean!
   IsNobodyAllowed: Boolean!
   kind: DataKind!
   locale: Locale!
@@ -2118,7 +2118,7 @@ input ConfigureDataAccessPoliciesPropositionInput {
   hygrothermalData: HygrothermalDataPropositionInput
   id: UuidPropositionInput
   institutionAccessPolicies: InstitutionAccessPoliciesPropositionInput
-  isAnyoneAllowed: BooleanPropositionInput
+  isEveryoneAllowed: BooleanPropositionInput
   isGlobal: BooleanPropositionInput
   isNobodyAllowed: BooleanPropositionInput
   lifeCycleData: LifeCycleDataPropositionInput
@@ -2355,7 +2355,7 @@ input DataAccessPolicyPropositionInput {
   hygrothermalData: HygrothermalDataPropositionInput
   id: UuidPropositionInput
   institutionAccessPolicies: InstitutionAccessPoliciesPropositionInput
-  isAnyoneAllowed: BooleanPropositionInput
+  isEveryoneAllowed: BooleanPropositionInput
   isGlobal: BooleanPropositionInput
   isNobodyAllowed: BooleanPropositionInput
   lifeCycleData: LifeCycleDataPropositionInput
@@ -3267,7 +3267,7 @@ input ResetDataAccessPoliciesPropositionInput {
   hygrothermalData: HygrothermalDataPropositionInput
   id: UuidPropositionInput
   institutionAccessPolicies: InstitutionAccessPoliciesPropositionInput
-  isAnyoneAllowed: BooleanPropositionInput
+  isEveryoneAllowed: BooleanPropositionInput
   isGlobal: BooleanPropositionInput
   isNobodyAllowed: BooleanPropositionInput
   lifeCycleData: LifeCycleDataPropositionInput

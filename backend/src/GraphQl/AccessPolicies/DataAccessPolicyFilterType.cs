@@ -19,7 +19,7 @@ public class DataAccessPolicyFilterType
         descriptor.Field(_ => _.UpdatedAt);
         descriptor.Field(_ => _.IsGlobal);
         descriptor.Field(_ => _.IsNobodyAllowed);
-        descriptor.Field(_ => _.IsAnyoneAllowed);
+        descriptor.Field(_ => _.IsEveryoneAllowed);
         descriptor.Field(_ => _.Combinator);
         descriptor.Field(_ => _.UserAccessPolicies);
         descriptor.Field(_ => _.InstitutionAccessPolicies);

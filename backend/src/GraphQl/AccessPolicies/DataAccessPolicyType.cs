@@ -98,10 +98,10 @@ public sealed class DataAccessPolicyType
             .ResolveWith<Resolvers>(t =>
                 Resolvers.IsNobodyAllowedAsync(default!, default!, default!, default!));
         descriptor
-            .Field(_ => _.IsAnyoneAllowed)
+            .Field(_ => _.IsEveryoneAllowed)
             .Cost(0)
             .ResolveWith<Resolvers>(t =>
-                Resolvers.IsAnyoneAllowedAsync(default!, default!, default!, default!));
+                Resolvers.IsEveryoneAllowedAsync(default!, default!, default!, default!));
         descriptor
             .Field(_ => _.IsAccessAllowed(default!, default!, default!))
             .Cost(0)
@@ -153,7 +153,7 @@ public sealed class DataAccessPolicyType
                 is not null;
         }
 
-        public static Task<bool> IsAnyoneAllowedAsync(
+        public static Task<bool> IsEveryoneAllowedAsync(
             [Parent] DataAccessPolicy dataAccessPolicy,
             IDataAccessPolicyByDataIdDataLoader policyByDataIdDataLoader,
             ApplicationDbContext databaseContext,

@@ -71,7 +71,7 @@ fragment DataAccessPoliciesPartial on DataAccessPolicy {
   }
   isGlobal
   combinator
-  isAnyoneAllowed
+  isEveryoneAllowed
   isNobodyAllowed
   userAccessPolicies {
     totalCount

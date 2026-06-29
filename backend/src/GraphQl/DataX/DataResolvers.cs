@@ -122,7 +122,7 @@ public sealed class DataResolvers
     }
 
     [Authorize(Policy = AuthorizationPolicies.AuthenticatedPolicy)]
-    public static Task<bool> IsAnyoneAllowedAsync(
+    public static Task<bool> IsEveryoneAllowedAsync(
         [Parent] IData data,
         ApplicationDbContext databaseContext,
         CommonAuthorization authorization,

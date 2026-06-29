@@ -46,9 +46,9 @@ export default function DataAccessPolicySummary({
             {entity.isGlobal ? "global" : "local"}
           </Tag>
         ),
-        entity.isAnyoneAllowed && (
-          <Tag key="isAnyoneAllowed" style={{ fontWeight: "normal" }}>
-            anyone allowed
+        entity.isEveryoneAllowed && (
+          <Tag key="isEveryoneAllowed" style={{ fontWeight: "normal" }}>
+            everyone allowed
           </Tag>
         ),
         entity.isNobodyAllowed && (

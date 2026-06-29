@@ -53,7 +53,7 @@ and `false` in the 'or' case, and analogously for institution and application
 access policies.
 
 In particular, a data access policy with the combinator 'all' and empty user,
-institution, and application policies allows access to anyone, also anonymous
+institution, and application policies allows access to everyone, also anonymous
 access. And one with the combinator 'or' and empty policies allows access to
 nobody, no matter if authenticated or not.
 
@@ -63,7 +63,7 @@ global if this field is `null`. The global and individual policies are combined
 conjunctively, meaning that for access both need to allow access.
 
 There are mutations to
-* reset a data access policy to its original state, in which anyone is allowed
+* reset a data access policy to its original state, in which everyone is allowed
   access;
 * configure the logical combinator of a data access policy (as explained above);
 * clear user, institution, and applicatoin policies of a data access policy;
@@ -240,7 +240,7 @@ public sealed class DataAccessPolicy()
         && OpenIdConnectApplicationAccessPolicies.Count == 0;
 
     [Projectable]
-    public bool IsAnyoneAllowed => IsAccessAllowed(null, null, null);
+    public bool IsEveryoneAllowed => IsAccessAllowed(null, null, null);
 
     [Projectable]
     public bool IsAccessAllowed(

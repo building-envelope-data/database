@@ -54,7 +54,7 @@ export default function Page() {
         where={{
           and: [
             { isGlobal: { equalTo: false } },
-            { isAnyoneAllowed: { equalTo: false } },
+            { isEveryoneAllowed: { equalTo: false } },
           ],
         }}
       />

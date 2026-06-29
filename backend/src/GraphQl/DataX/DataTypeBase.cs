@@ -45,9 +45,9 @@ public abstract class DataTypeBase<TData, TDataByIdDataLoader>
             .Cost(0)
             .ResolveWith<DataResolvers>(_ => DataResolvers.IsNobodyAllowedAsync(default!, default!, default!, default!, default!));
         descriptor
-            .Field(nameof(DataResolvers.IsAnyoneAllowedAsync)[..^"Async".Length])
+            .Field(nameof(DataResolvers.IsEveryoneAllowedAsync)[..^"Async".Length])
             .Cost(0)
-            .ResolveWith<DataResolvers>(_ => DataResolvers.IsAnyoneAllowedAsync(default!, default!, default!, default!, default!));
+            .ResolveWith<DataResolvers>(_ => DataResolvers.IsEveryoneAllowedAsync(default!, default!, default!, default!, default!));
         descriptor
             .Field(nameof(DataResolvers.IsAccessAllowedAsync)[..^"Async".Length])
             .Cost(0)
