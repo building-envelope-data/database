@@ -567,6 +567,7 @@ type CalorimetricData implements Node & Data {
   kind: DataKind!
   locale: Locale!
   name: String
+  publishingState: PublishingState!
   resources(
     order: [GetHttpsResourceSortInput!]
     where: GetHttpsResourcePropositionInput
@@ -843,7 +844,7 @@ and `false` in the 'or' case, and analogously for institution and application
 access policies.
 
 In particular, a data access policy with the combinator 'all' and empty user,
-institution, and application policies allows access to anyone, also anonymous
+institution, and application policies allows access to everyone, also anonymous
 access. And one with the combinator 'or' and empty policies allows access to
 nobody, no matter if authenticated or not.
 
@@ -853,7 +854,7 @@ global if this field is `null`. The global and individual policies are combined
 conjunctively, meaning that for access both need to allow access.
 
 There are mutations to
-* reset a data access policy to its original state, in which anyone is allowed
+* reset a data access policy to its original state, in which everyone is allowed
   access;
 * configure the logical combinator of a data access policy (as explained above);
 * clear user, institution, and applicatoin policies of a data access policy;
@@ -1062,6 +1063,7 @@ type GeometricData implements Node & Data {
   kind: DataKind!
   locale: Locale!
   name: String
+  publishingState: PublishingState!
   resources(
     order: [GetHttpsResourceSortInput!]
     where: GetHttpsResourcePropositionInput
@@ -1176,6 +1178,7 @@ type HygrothermalData implements Node & Data {
   kind: DataKind!
   locale: Locale!
   name: String
+  publishingState: PublishingState!
   resources(
     order: [GetHttpsResourceSortInput!]
     where: GetHttpsResourcePropositionInput
@@ -1283,6 +1286,7 @@ type LifeCycleData implements Node & Data {
   kind: DataKind!
   locale: Locale!
   name: String
+  publishingState: PublishingState!
   resources(
     order: [GetHttpsResourceSortInput!]
     where: GetHttpsResourcePropositionInput
@@ -1410,6 +1414,7 @@ type OpticalData implements Node & Data {
   nearnormalHemisphericalSolarTransmittances: [Float!]!
   nearnormalHemisphericalVisibleReflectances: [Float!]!
   nearnormalHemisphericalVisibleTransmittances: [Float!]!
+  publishingState: PublishingState!
   resources(
     order: [GetHttpsResourceSortInput!]
     where: GetHttpsResourcePropositionInput
@@ -1477,6 +1482,7 @@ type PhotovoltaicData implements Node & Data {
   kind: DataKind!
   locale: Locale!
   name: String
+  publishingState: PublishingState!
   resources(
     order: [GetHttpsResourceSortInput!]
     where: GetHttpsResourcePropositionInput
@@ -1868,6 +1874,7 @@ interface Data {
   kind: DataKind!
   locale: Locale!
   name: String
+  publishingState: PublishingState!
   resources: [GetHttpsResource!]!
   resourceTree: GetHttpsResourceTree!
   timestamp: DateTime!
@@ -2078,7 +2085,7 @@ and `false` in the 'or' case, and analogously for institution and application
 access policies.
 
 In particular, a data access policy with the combinator 'all' and empty user,
-institution, and application policies allows access to anyone, also anonymous
+institution, and application policies allows access to everyone, also anonymous
 access. And one with the combinator 'or' and empty policies allows access to
 nobody, no matter if authenticated or not.
 
@@ -2088,7 +2095,7 @@ global if this field is `null`. The global and individual policies are combined
 conjunctively, meaning that for access both need to allow access.
 
 There are mutations to
-* reset a data access policy to its original state, in which anyone is allowed
+* reset a data access policy to its original state, in which everyone is allowed
   access;
 * configure the logical combinator of a data access policy (as explained above);
 * clear user, institution, and applicatoin policies of a data access policy;
@@ -2315,7 +2322,7 @@ and `false` in the 'or' case, and analogously for institution and application
 access policies.
 
 In particular, a data access policy with the combinator 'all' and empty user,
-institution, and application policies allows access to anyone, also anonymous
+institution, and application policies allows access to everyone, also anonymous
 access. And one with the combinator 'or' and empty policies allows access to
 nobody, no matter if authenticated or not.
 
@@ -2325,7 +2332,7 @@ global if this field is `null`. The global and individual policies are combined
 conjunctively, meaning that for access both need to allow access.
 
 There are mutations to
-* reset a data access policy to its original state, in which anyone is allowed
+* reset a data access policy to its original state, in which everyone is allowed
   access;
 * configure the logical combinator of a data access policy (as explained above);
 * clear user, institution, and applicatoin policies of a data access policy;
@@ -2409,7 +2416,7 @@ and `false` in the 'or' case, and analogously for institution and application
 access policies.
 
 In particular, a data access policy with the combinator 'all' and empty user,
-institution, and application policies allows access to anyone, also anonymous
+institution, and application policies allows access to everyone, also anonymous
 access. And one with the combinator 'or' and empty policies allows access to
 nobody, no matter if authenticated or not.
 
@@ -2419,7 +2426,7 @@ global if this field is `null`. The global and individual policies are combined
 conjunctively, meaning that for access both need to allow access.
 
 There are mutations to
-* reset a data access policy to its original state, in which anyone is allowed
+* reset a data access policy to its original state, in which everyone is allowed
   access;
 * configure the logical combinator of a data access policy (as explained above);
 * clear user, institution, and applicatoin policies of a data access policy;
@@ -3227,7 +3234,7 @@ and `false` in the 'or' case, and analogously for institution and application
 access policies.
 
 In particular, a data access policy with the combinator 'all' and empty user,
-institution, and application policies allows access to anyone, also anonymous
+institution, and application policies allows access to everyone, also anonymous
 access. And one with the combinator 'or' and empty policies allows access to
 nobody, no matter if authenticated or not.
 
@@ -3237,7 +3244,7 @@ global if this field is `null`. The global and individual policies are combined
 conjunctively, meaning that for access both need to allow access.
 
 There are mutations to
-* reset a data access policy to its original state, in which anyone is allowed
+* reset a data access policy to its original state, in which everyone is allowed
   access;
 * configure the logical combinator of a data access policy (as explained above);
 * clear user, institution, and applicatoin policies of a data access policy;
@@ -3618,7 +3625,10 @@ enum ApplyPolicy {
 enum CalculateMethodErrorCode {
   UNKNOWN_METHOD
   UNKNOWN_DATABASE
-  DATA_QUERY_FAILED
+  UNKNOWN_DATA
+  UNSUPPORTED_DATA_FORMAT
+  HASH_VALUE_CALCULATION_FAILED
+  HASH_VALUE_MISMATHCH
 }
 
 enum CalorimetricObserver {
@@ -3870,6 +3880,12 @@ enum PublishDataErrorCode {
   MISSING_ROOT_RESOURCE
   DUPLICATE_ROOT_RESOURCE
   RESOURCES_WITHOUT_FILE
+}
+
+enum PublishingState {
+  PENDING
+  PUBLISHED
+  RETRACTED
 }
 
 enum RecomputeGetHttpsResourceHashValuesErrorCode {
