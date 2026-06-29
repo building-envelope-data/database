@@ -10,7 +10,6 @@ using HotChocolate;
 using HotChocolate.Data;
 using HotChocolate.Resolvers;
 using HotChocolate.Types;
-using NodaTime;
 using Microsoft.EntityFrameworkCore;
 
 namespace Database.GraphQl.PhotovoltaicDataX;
@@ -87,7 +86,9 @@ public sealed class PhotovoltaicDataQueries
         [GraphQLType<LocaleType>] string? locale,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
-        IClock clock,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
         CancellationToken cancellationToken
     )
     {
@@ -97,6 +98,9 @@ public sealed class PhotovoltaicDataQueries
             databaseContext => databaseContext.PhotovoltaicData,
             databaseContextFactory,
             accessPolicyService,
+            databaseContext,
+            resolverContext,
+            authorization,
             cancellationToken
         );
     }

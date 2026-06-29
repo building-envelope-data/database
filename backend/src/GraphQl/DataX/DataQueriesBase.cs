@@ -16,10 +16,10 @@ using Microsoft.EntityFrameworkCore;
 namespace Database.GraphQl.DataX;
 
 public abstract class DataQueriesBase<TData>
-where TData : class, IData
+    where TData : class, IData
 {
-    protected Task<HotChocolate.Types.Pagination.Connection<TData>> GetAllDataAsync(
-        Func<ApplicationDbContext, DbSet<TData>> getData,
+    protected static Task<HotChocolate.Types.Pagination.Connection<TData>> GetAllDataAsync(
+        Func<ApplicationDbContext, IQueryable<TData>> getData,
         [GraphQLType<LocaleType>] string? locale,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
@@ -27,7 +27,7 @@ where TData : class, IData
         CancellationToken cancellationToken
     )
     {
-        return accessPolicyService.Apply(
+        return accessPolicyService.ApplyAsync(
             databaseContext => getData(databaseContext).AsNoTracking()
                 .Where(_ => _.PublishingState != Enumerations.PublishingState.PENDING)
                 .With(resolverContext.GetQueryContext<TData>(), Sorting.DefaultEntityOrder),
@@ -44,8 +44,8 @@ where TData : class, IData
         );
     }
 
-    protected async Task<HotChocolate.Types.Pagination.Connection<TData>> GetAllPendingDataAsync(
-        Func<ApplicationDbContext, DbSet<TData>> getData,
+    protected static async Task<HotChocolate.Types.Pagination.Connection<TData>> GetAllPendingDataAsync(
+        Func<ApplicationDbContext, IQueryable<TData>> getData,
         [GraphQLType<LocaleType>] string? locale,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
@@ -62,7 +62,7 @@ where TData : class, IData
                 .ToPageAsync(resolverContext.GetPagingArguments(), cancellationToken)
                 .ToConnectionAsync();
         }
-        return await accessPolicyService.Apply(
+        return await accessPolicyService.ApplyAsync(
             databaseContext => getData(databaseContext).AsNoTracking()
                 .Where(_ => _.PublishingState == Enumerations.PublishingState.PENDING)
                 .With(resolverContext.GetQueryContext<TData>(), Sorting.DefaultEntityOrder),
@@ -79,8 +79,8 @@ where TData : class, IData
         );
     }
 
-    protected Task<bool> HasDataAsync(
-        Func<ApplicationDbContext, DbSet<TData>> getData,
+    protected static Task<bool> HasDataAsync(
+        Func<ApplicationDbContext, IQueryable<TData>> getData,
         [GraphQLType<LocaleType>] string? locale,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
@@ -88,7 +88,7 @@ where TData : class, IData
         CancellationToken cancellationToken
     )
     {
-        return accessPolicyService.Apply(
+        return accessPolicyService.ApplyAsync(
             databaseContext => getData(databaseContext).AsNoTracking()
                 .Where(_ => _.PublishingState != Enumerations.PublishingState.PENDING)
                 .With(resolverContext.GetQueryContext<TData>(), Sorting.DefaultEntityOrder),
@@ -102,21 +102,31 @@ where TData : class, IData
         );
     }
 
-    protected Task<TData?> GetDataAsync(
+    internal static async Task<TData?> GetDataAsync(
         Guid id,
         [GraphQLType<LocaleType>] string? locale,
-        Func<ApplicationDbContext, DbSet<TData>> getData,
+        Func<ApplicationDbContext, IQueryable<TData>> getData,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
         CancellationToken cancellationToken
     )
     {
-        return accessPolicyService.Apply<TData, TData?>(
+        var exists = await getData(databaseContext).AsNoTracking()
+            .Where(_ => _.Id == id)
+            .AnyAsync(cancellationToken);
+        return await accessPolicyService.ApplyAsync<TData, TData?>(
             databaseContext => getData(databaseContext).AsNoTracking()
                 .Where(_ => _.Id == id),
             async policedData =>
             {
                 var node = await policedData.SingleOrDefaultAsync(cancellationToken);
+                if (exists && node is null)
+                {
+                    authorization.ReportUnauthorizedError(resolverContext);
+                }
                 return (node is null ? [] : [node], node);
             },
             databaseContextFactory,

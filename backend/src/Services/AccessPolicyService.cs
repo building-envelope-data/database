@@ -29,7 +29,7 @@ public sealed class AccessPolicyService(
     ILogger<AccessPolicyService> logger
 )
 {
-    public async Task<TResult> Apply<TData, TResult>(
+    public async Task<TResult> ApplyAsync<TData, TResult>(
         Func<ApplicationDbContext, IQueryable<TData>> getData,
         Func<IQueryable<TData>, Task<(IReadOnlyList<TData> Data, TResult Result)>> then,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
@@ -52,7 +52,7 @@ public sealed class AccessPolicyService(
         logger.ApplyingAccessPolicy(currentUser?.Uuid, institutionIds, openIdConnectClientId);
         var policedData = PoliceData(getData(databaseContext), currentUser?.Uuid, institutionIds, openIdConnectClientId, databaseContext);
         var (postProcessedData, result) = await then(policedData);
-        await IncrementAccessCounts(
+        await IncrementAccessCountsAsync(
             postProcessedData,
             openIdConnectClientId,
             currentUser?.Uuid,
@@ -87,7 +87,7 @@ public sealed class AccessPolicyService(
         );
     }
 
-    private async Task IncrementAccessCounts<TData>(
+    private async Task IncrementAccessCountsAsync<TData>(
         IReadOnlyList<TData> allData,
         string? openIdConnectClientId,
         Guid? userId,

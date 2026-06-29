@@ -1,12 +1,13 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Database.Authorization;
 using Database.Data;
 using Database.Enumerations;
 using Database.GraphQl.Scalars;
 using Database.Services;
 using HotChocolate;
+using HotChocolate.Resolvers;
 using HotChocolate.Types;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,18 +22,21 @@ public sealed class DataQueries
         [GraphQLType<LocaleType>] string? locale,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
         CancellationToken cancellationToken
     )
     {
-        return accessPolicyService.Apply<IData, IData?>(
-            databaseContext => databaseContext.Data(dataKind).AsNoTracking()
-                .Where(_ => _.Id == id),
-            async policedData =>
-            {
-                var node = await policedData.SingleOrDefaultAsync(cancellationToken);
-                return (node is null ? [] : [node], node);
-            },
+        return DataQueriesBase<IData>.GetDataAsync(
+            id,
+            locale,
+            databaseContext => databaseContext.Data(dataKind),
             databaseContextFactory,
+            accessPolicyService,
+            databaseContext,
+            resolverContext,
+            authorization,
             cancellationToken
         );
     }

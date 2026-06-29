@@ -185,7 +185,7 @@ public sealed class GetHttpsResourcesController(
                 instance: HttpContext.Request.Path
             );
         }
-        if (!await accessPolicyService.Apply<IData, bool>(
+        if (!await accessPolicyService.ApplyAsync<IData, bool>(
             databaseContext => databaseContext.Data(getHttpsResource.Data.Kind).AsNoTracking()
                 .Where(_ => _.Id == getHttpsResource.DataId),
             async policedData =>

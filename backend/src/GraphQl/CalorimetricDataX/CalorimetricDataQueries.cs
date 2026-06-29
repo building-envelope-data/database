@@ -86,6 +86,9 @@ public sealed class CalorimetricDataQueries
         [GraphQLType<LocaleType>] string? locale,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
         CancellationToken cancellationToken
     )
     {
@@ -95,6 +98,9 @@ public sealed class CalorimetricDataQueries
             databaseContext => databaseContext.CalorimetricData,
             databaseContextFactory,
             accessPolicyService,
+            databaseContext,
+            resolverContext,
+            authorization,
             cancellationToken
         );
     }

@@ -86,6 +86,9 @@ public sealed class OpticalDataQueries
         [GraphQLType<LocaleType>] string? locale,
         IDbContextFactory<ApplicationDbContext> databaseContextFactory,
         AccessPolicyService accessPolicyService,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
         CancellationToken cancellationToken
     )
     {
@@ -95,6 +98,9 @@ public sealed class OpticalDataQueries
             databaseContext => databaseContext.OpticalData,
             databaseContextFactory,
             accessPolicyService,
+            databaseContext,
+            resolverContext,
+            authorization,
             cancellationToken
         );
     }
