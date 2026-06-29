@@ -20,9 +20,6 @@ public abstract class DataTypeBase<TData, TDataByIdDataLoader>
     {
         base.Configure(descriptor);
         descriptor
-            .Field(_ => _.PublishingState)
-            .Ignore();
-        descriptor
             .Field(_ => _.UpdatedAt)
             .Name(DataType.TimestampFieldName);
         descriptor

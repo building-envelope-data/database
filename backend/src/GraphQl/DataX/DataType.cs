@@ -20,9 +20,6 @@ public sealed class DataType(AppSettings appSettings)
         // `1..` is a range as introduced in https://docs.microsoft.com/en-us/dotnet/csharp/whats-new/csharp-8#indices-and-ranges
         descriptor.Name(nameof(IData)[1..]);
         descriptor
-            .Field(_ => _.PublishingState)
-            .Ignore();
-        descriptor
             .Field(GraphQlConstants.IdFieldName)
             .Type<NonNullType<IdType>>();
         descriptor
