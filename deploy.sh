@@ -523,7 +523,7 @@ deploy | restore | resume)
       print_error "Backup directory is unknown"
       exit 1
     fi
-    run ./database.mk backup DIR="${attempt["backup_dir"]-}" || exit 1
+    run ./database.mk backup DIR="${attempt["backup_dir"]-}" CONTENT_ADDRESSABLE_STORAGE="/app/data/backups/.content-addressable-storage" || exit 1
     ;& # fall through
   switch)
     STEP="switch"
@@ -556,7 +556,7 @@ deploy | restore | resume)
         print_error "Restore directory is unknown"
         exit 1
       fi
-      run ./database.mk restore DIR="${attempt["restore_dir"]-}" || exit 1
+      run ./database.mk restore DIR="${attempt["restore_dir"]-}" CONTENT_ADDRESSABLE_STORAGE="/app/data/backups/.content-addressable-storage" || exit 1
       ;;
     *)
       print_error "Unsupported command '${attempt["command"]-}'"
@@ -661,7 +661,7 @@ rollback)
       print_error "Backup directory is unknown"
       exit 1
     fi
-    run ./database.mk restore DIR="${attempt["backup_dir"]-}" || exit 1
+    run ./database.mk restore DIR="${attempt["backup_dir"]-}" CONTENT_ADDRESSABLE_STORAGE="/app/data/backups/.content-addressable-storage" || exit 1
     # re-create services just to make sure instead of `[[ "${attempt["until"]}" == "${STEP}" ]] && return 0`
 
     STEP="services"
