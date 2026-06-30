@@ -101,8 +101,9 @@ migrate : ## Migrate database by running the idempotent SQL script ./backend/src
 backup : DIR = ./backup
 backup : CONTENT_ADDRESSABLE_STORAGE = ./.content-addressable-storage
 backup : ## Backup database and related data to directory with absolute path `${DIR}` storing files across multiple backups content-addressed in the directory `${CONTENT_ADDRESSABLE_STORAGE}`, for example, `./database.mk backup DIR=/app/data/backups/$(date +"%Y-%m-%d_%H_%M_%S") CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage`
-	mkdir --parents "${DIR}"
-	mkdir --parents "${CONTENT_ADDRESSABLE_STORAGE}"
+	mkdir --parents \
+		"${DIR}/files" \
+		"${CONTENT_ADDRESSABLE_STORAGE}"
 	docker compose up \
 		--no-build \
 		--no-recreate \
@@ -131,7 +132,6 @@ backup : ## Backup database and related data to directory with absolute path `${
 			else \
 				cd /app/files ; \
 			fi ; \
-			mkdir --parents /backup/files ; \
 			find . -type f -printf "%f\n" | while read -r original_file_name; do \
 				echo "Backing up file: $${original_file_name}" ; \
 				hash=$$(sha256sum ./"$${original_file_name}" | cut --delimiter=" " --fields=1) ; \
@@ -143,7 +143,7 @@ backup : ## Backup database and related data to directory with absolute path `${
 						echo "File already exists in content-addressable storage: $${content_addressed_file_path}" ; \
 				fi ; \
 				ln --symbolic "$${content_addressed_file_path}" /backup/files/"$${original_file_name}" ; \
-			done \
+			done
 		'
 .PHONY : backup
 
