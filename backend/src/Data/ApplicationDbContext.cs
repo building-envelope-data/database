@@ -365,8 +365,11 @@ public sealed class ApplicationDbContext
                     )
                 )
             );
+        // In the generated migration turn `CREATE TRIGGER` into `CREATE
+        // CONSTRAINT TRIGGER` and add `DEFERRABLE INITIALLY DEFERRED` before
+        // `FOR EACH ...`.
         builder
-            .BeforeDelete(trigger => trigger
+            .AfterDelete(trigger => trigger
                 .SetTriggerName(GetHttpsResource.RootCanOnlyBeDeletedAlongsideItsDataTriggerName)
                 .Action(action => action
                     .ExecuteRawSql(
@@ -792,8 +795,11 @@ public sealed class ApplicationDbContext
                     )
                 )
             );
+        // In the generated migration turn `CREATE TRIGGER` into `CREATE
+        // CONSTRAINT TRIGGER` and add `DEFERRABLE INITIALLY DEFERRED` before
+        // `FOR EACH ...`.
         builder
-            .BeforeDelete(trigger => trigger
+            .AfterDelete(trigger => trigger
                 .SetTriggerName(DataAccessPolicy.CanOnlyBeDeletedAlongsideCorrespondingDataTriggerName)
                 .Action(action => action
                     .ExecuteRawSql(

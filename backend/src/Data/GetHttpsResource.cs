@@ -20,7 +20,7 @@ public sealed class GetHttpsResource
 
     public const string DataIdsMustMatchTriggerName = $"{TableName}_data_ids_must_match";
     public const string DataIdCannotChangeTriggerName = $"{TableName}_data_id_cannot_change";
-    public const string RootCanOnlyBeDeletedAlongsideItsDataTriggerName = $"{TableName}_root_can_only_be_deleted_alongside_its_data";
+    public const string RootCanOnlyBeDeletedAlongsideItsDataTriggerName = $"resource_root_can_only_deleted_alongside_its_data";
     public static readonly ImmutableArray<string> TriggerNames = [
         DataIdsMustMatchTriggerName,
         DataIdCannotChangeTriggerName,
