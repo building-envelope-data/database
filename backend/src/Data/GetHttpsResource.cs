@@ -235,7 +235,11 @@ public sealed class GetHttpsResource
     {
         var oldFilePath = FilePath;
         FileExtension = fileExtension;
-        File.Move(oldFilePath, FilePath);
+        File.Move(
+            oldFilePath,
+            FilePath,
+            overwrite: true
+        );
     }
 
     public bool DoesFileExist()
