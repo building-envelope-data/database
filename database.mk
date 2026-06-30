@@ -10,7 +10,6 @@ MAKEFLAGS += --warn-undefined-variables
 COMPOSE_BAKE=true
 
 dump_archive_name = postgresql_dumpall.gz
-files_archive_name = files.gz
 
 # Taken from https://www.client9.com/self-documenting-makefiles/
 help : ## Print this help
@@ -100,8 +99,10 @@ migrate : ## Migrate database by running the idempotent SQL script ./backend/src
 # Backup files with `tar` and `gzip` as suggested in https://docs.docker.com/storage/volumes/#backup-restore-or-migrate-data-volumes
 # We could have used `docker cp` as explained in https://docs.docker.com/engine/reference/commandline/cp/
 backup : DIR = ./backup
-backup : ## Backup database and related data to directory with absolute path `${DIR}`, for example, `./database.mk backup DIR=/app/data/backups/$(date +"%Y-%m-%d_%H_%M_%S")`
+backup : CONTENT_ADDRESSABLE_STORAGE = ./.content-addressable-storage
+backup : ## Backup database and related data to directory with absolute path `${DIR}` storing files across multiple backups content-addressed in the directory `${CONTENT_ADDRESSABLE_STORAGE}`, for example, `./database.mk backup DIR=/app/data/backups/$(date +"%Y-%m-%d_%H_%M_%S") CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage`
 	mkdir --parents "${DIR}"
+	mkdir --parents "${CONTENT_ADDRESSABLE_STORAGE}"
 	docker compose up \
 		--no-build \
 		--no-recreate \
@@ -122,18 +123,33 @@ backup : ## Backup database and related data to directory with absolute path `${
 		--no-deps \
 		--no-TTY \
 		--volume "${DIR}":/backup \
+		--volume "${CONTENT_ADDRESSABLE_STORAGE}":/.content-addressable-storage \
 		backend \
-		tar \
-			--verbose \
-			--create \
-			--gzip \
-			--file="/backup/${files_archive_name}" \
-			--directory=/app \
-			./files
+		bash -o errexit -o errtrace -o nounset -o pipefail -c ' \
+			if [[ "${ENVIRONMENT}" == "development" ]]; then \
+				cd /app/src/files ; \
+			else \
+				cd /app/files ; \
+			fi ; \
+			mkdir --parents /backup/files ; \
+			find . -type f -printf "%f\n" | while read -r original_file_name; do \
+				echo "Backing up file: $${original_file_name}" ; \
+				hash=$$(sha256sum ./"$${original_file_name}" | cut --delimiter=" " --fields=1) ; \
+				content_addressed_file_path="/.content-addressable-storage/$${hash}" ; \
+				if [[ ! -f "$${content_addressed_file_path}" ]]; then \
+						cp "$${original_file_name}" "$${content_addressed_file_path}" ; \
+						echo "Stored new content-addressed file: $${content_addressed_file_path}" ; \
+				else \
+						echo "File already exists in content-addressable storage: $${content_addressed_file_path}" ; \
+				fi ; \
+				ln --symbolic "$${content_addressed_file_path}" /backup/files/"$${original_file_name}" ; \
+			done \
+		'
 .PHONY : backup
 
 restore : DIR = ./backup
-restore : ## Restore database and related data from directory with absolute path `${DIR}` (dropping and recreating the database and clearing related files before to start cleanly), for example, `./database.mk restore DIR=/app/data/backups/2021-04-22_15_43_35`
+restore : CONTENT_ADDRESSABLE_STORAGE = ./.content-addressable-storage
+restore : ## Restore database and related data from directory with absolute path `${DIR}` and content-addressable storage directory `${CONTENT_ADDRESSABLE_STORAGE}` (dropping and recreating the database and clearing related files before to start cleanly), for example, `./database.mk restore DIR=/app/data/backups/2021-04-22_15_43_35 CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage`
 	docker compose stop \
 		backend
 	docker compose up \
@@ -169,25 +185,24 @@ restore : ## Restore database and related data from directory with absolute path
 		--no-deps \
 		--no-TTY \
 		--volume "${DIR}":/backup \
+		--volume "${CONTENT_ADDRESSABLE_STORAGE}":/.content-addressable-storage \
 		backend \
-		bash -o errexit -o errtrace -o nounset -o pipefail -c " \
+		bash -o errexit -o errtrace -o nounset -o pipefail -c ' \
 			if [[ "${ENVIRONMENT}" == "development" ]]; then \
 				cd /app/src/files ; \
 			else \
 				cd /app/files ; \
-			fi \
-			&& rm \
+			fi ; \
+			rm \
 				--recursive \
 				--force \
 				--dir \
-				* \
-			&& tar \
-				--verbose \
-				--extract \
-				--gunzip \
-				--strip-components=2 \
-				--file='/backup/${files_archive_name}' \
-		"
+				* ; \
+			find /backup/files -type l -printf "%f\n" | while read -r backup_symlink_name; do \
+				echo "Restoring file: $${backup_symlink_name}" from content-addressable storage $$(readlink --canonicalize /backup/files/$${backup_symlink_name}) ; \
+				cp /backup/files/"$${backup_symlink_name}" ./"$${backup_symlink_name}" ; \
+			done \
+		'
 	docker compose start \
 		backend
 .PHONY : restore
