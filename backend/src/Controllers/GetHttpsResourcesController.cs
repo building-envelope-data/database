@@ -212,6 +212,7 @@ public sealed class GetHttpsResourcesController(
                 instance: HttpContext.Request.Path
             );
         }
+        getHttpsResource.UpdateFileExtension(dataFormat.Extension);
         return PhysicalFile(
             physicalPath: getHttpsResource.AbsoluteFilePath,
             contentType: dataFormat.MediaType,
