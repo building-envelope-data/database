@@ -1,0 +1,53 @@
+fragment DatabasesPartial on Database {
+  id: uuid
+  uuid
+  name
+  description
+  locator
+  operator {
+    node {
+      uuid
+      name
+    }
+  }
+  verificationState
+  verificationCode
+}
+
+fragment DatabasePartial on Database {
+  ...DatabasesPartial
+  isAuthorizedToUpdateNode
+  isAuthorizedToVerifyNode
+}
+
+query Database {
+  database {
+    ...DatabasePartial
+  }
+}
+
+mutation UpdateDatabase($input: UpdateDatabaseInput!) {
+  updateDatabase(input: $input) {
+    database {
+      ...DatabasePartial
+    }
+    errors {
+      code
+      message
+      path
+    }
+  }
+}
+
+# mutation VerifyDatabase($input: VerifyDatabaseInput!) {
+#   verifyDatabase(input: $input) {
+#     database {
+#       ...DatabasesPartial
+#     }
+#     errors {
+#       code
+#       message
+#       path
+#     }
+#   }
+# }

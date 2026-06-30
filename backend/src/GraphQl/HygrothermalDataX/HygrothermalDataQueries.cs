@@ -1,45 +1,107 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Database.Authorization;
+using Database.Data;
+using Database.GraphQl.DataX;
+using Database.GraphQl.Scalars;
+using Database.Services;
 using HotChocolate;
 using HotChocolate.Data;
+using HotChocolate.Resolvers;
 using HotChocolate.Types;
-using Guid = System.Guid;
+using Microsoft.EntityFrameworkCore;
 
-namespace Database.GraphQl.HygrothermalDataX
+namespace Database.GraphQl.HygrothermalDataX;
+
+[ExtendObjectType(nameof(Query))]
+public sealed class HygrothermalDataQueries
+: DataQueriesBase<HygrothermalData>
 {
-    [ExtendObjectType(nameof(Query))]
-    public sealed class HygrothermalDataQueries
+    [UsePaging]
+    [UseFiltering<HygrothermalDataFilterType>]
+    [UseSorting<HygrothermalDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<HygrothermalData>> GetAllHygrothermalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CancellationToken cancellationToken
+    )
     {
-        [UseDbContext(typeof(Data.ApplicationDbContext))]
-        [UsePaging]
-        // [UseProjection] // We disabled projections because when requesting `id` all results had the same `id` and when also requesting `uuid`, the latter was always the empty UUID `000...`.
-        [UseFiltering]
-        [UseSorting]
-        public IQueryable<Data.HygrothermalData> GetAllHygrothermalData(
-            DateTime? timestamp,
-            [GraphQLType(typeof(LocaleType))] string? locale,
-            [ScopedService] Data.ApplicationDbContext context
-            )
-        {
-            // TODO Use `timestamp` and `locale`.
-            return context.HygrothermalData;
-        }
+        return GetAllDataAsync(
+            databaseContext => databaseContext.HygrothermalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            cancellationToken
+        );
+    }
 
-        public Task<Data.HygrothermalData?> GetHygrothermalDataAsync(
-            Guid id,
-            DateTime? timestamp,
-            [GraphQLType(typeof(LocaleType))] string? locale,
-            HygrothermalDataByIdDataLoader byId,
-            CancellationToken cancellationToken
-            )
-        {
-            // TODO Use `timestamp` and `locale`.
-            return byId.LoadAsync(
-                id,
-                cancellationToken
-                );
-        }
+    [UsePaging]
+    [UseFiltering<HygrothermalDataFilterType>]
+    [UseSorting<HygrothermalDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<HygrothermalData>> GetAllPendingHygrothermalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllPendingDataAsync(
+            databaseContext => databaseContext.HygrothermalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
+    [UseFiltering<HygrothermalDataFilterType>]
+    public Task<bool> HasHygrothermalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CancellationToken cancellationToken
+    )
+    {
+        return HasDataAsync(
+            databaseContext => databaseContext.HygrothermalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            cancellationToken
+        );
+    }
+
+    public Task<HygrothermalData?> GetHygrothermalDataAsync(
+        Guid id,
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetDataAsync(
+            id,
+            locale,
+            databaseContext => databaseContext.HygrothermalData,
+            databaseContextFactory,
+            accessPolicyService,
+            databaseContext,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
     }
 }

@@ -1,17 +1,18 @@
+using Database.Data;
 using HotChocolate.Data.Filters;
 
-namespace Database.GraphQl
+namespace Database.GraphQl;
+
+public sealed class NamedMethodArgumentFilterType
+    : FilterInputType<NamedMethodArgument>
 {
-    public sealed class NamedMethodArgumentFilterType
-      : FilterInputType<Data.NamedMethodArgument>
+    protected override void Configure(
+        IFilterInputTypeDescriptor<NamedMethodArgument> descriptor
+    )
     {
-        protected override void Configure(
-          IFilterInputTypeDescriptor<Data.NamedMethodArgument> descriptor
-          )
-        {
-            descriptor.BindFieldsExplicitly();
-            descriptor.Field(x => x.Name);
-            // TODO descriptor.Field(x => x.Value);
-        }
+        descriptor.BindFieldsExplicitly();
+        descriptor.Name(nameof(NamedMethodArgumentFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        descriptor.Field(_ => _.Name);
+        // TODO descriptor.Field(_ => _.Value);
     }
 }

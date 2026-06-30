@@ -1,90 +1,128 @@
-fragment DataPartial on Data {
-  uuid
+#import "./common.graphql"
+
+fragment GetHttpsResourcePartial on GetHttpsResource {
+  description
+  hashValue
+  locator
+  dataFormatId
+  dataFormat {
+    uuid
+    name
+  }
+  archivedFilesMetaInformation {
+    path
+    dataFormatId
+    dataFormat {
+      uuid
+      name
+    }
+  }
+}
+
+fragment AppliedMethodPartial on AppliedMethod {
+  methodId
+  method {
+    uuid
+    name
+  }
+  arguments {
+    name
+    value
+  }
+  sources {
+    name
+    value {
+      databaseId
+      database {
+        name
+      }
+      dataId
+      dataKind
+      dataTimestamp
+    }
+  }
+}
+
+fragment DataApprovalPartial on DataApproval {
+  approverId
+  approver {
+    uuid
+    name
+  }
+  keyFingerprint
+  message
+  query
+  signature
+  statement {
+    ...ReferencePartial
+  }
   timestamp
-  componentId
+  variables
+}
+
+fragment ToTreeVertexAppliedConversionMethodPartial on ToTreeVertexAppliedConversionMethod {
+  methodId
+  method {
+    uuid
+    name
+  }
+  arguments {
+    name
+    value
+  }
+  sourceName
+}
+
+fragment DataPartial on Data {
+  id
+  uuid
+  locale
+  timestamp
   name
   description
+  warnings
+  createdAt
+  componentId
+  component {
+    uuid
+    name
+  }
+  creatorId
+  creator {
+    uuid
+    name
+  }
+  databaseId
+  database {
+    uuid
+    name
+    locator
+  }
+  approvals {
+    ...DataApprovalPartial
+  }
   appliedMethod {
-    methodId
-    arguments {
-      name
-      value
-    }
-    sources {
-      name
-      value {
-        dataId
-        dataKind
-        dataTimestamp
-        databaseId
-      }
-    }
+    ...AppliedMethodPartial
   }
   resourceTree {
     root {
+      vertexId
       value {
-        description
-        hashValue
-        locator
-        dataFormatId
+        ...GetHttpsResourcePartial
       }
     }
     nonRootVertices {
-      appliedConversionMethod {
-        arguments {
-          name
-          value
-        }
-        methodId
-        sourceName
-      }
-      parentId
-      value {
-        archivedFilesMetaInformation {
-          dataFormatId
-          path
-        }
-        description
-        dataFormatId
-        hashValue
-        id
-        locator
-        uuid
-      }
       vertexId
-    }
-  }
-  approvals {
-    approverId
-    keyFingerprint
-    query
-    response
-    signature
-    timestamp
-  }
-  createdAt
-  creatorId
-  locale
-  resources {
-    description
-    hashValue
-    locator
-    dataFormatId
-  }
-  warnings
-}
-
-query AllData($where: DataPropositionInput) {
-  allData(where: $where) {
-    nodes {
-      ...DataPartial
+      parentId
+      appliedConversionMethod {
+        ...ToTreeVertexAppliedConversionMethodPartial
+      }
+      value {
+        ...GetHttpsResourcePartial
+      }
     }
   }
 }
-
-# query HasData($where: DataPropositionInput) {
-#   hasData(where: $where)
-# }
 
 fragment CalorimetricDataPartial on CalorimetricData {
   ...DataPartial
@@ -92,79 +130,375 @@ fragment CalorimetricDataPartial on CalorimetricData {
   uValues
 }
 
-query AllCalorimetricData($where: CalorimetricDataPropositionInput) {
-  allCalorimetricData(where: $where) {
-    nodes {
-      ...CalorimetricDataPartial
+query CalorimetricData($id: Uuid!) {
+  data: calorimetricData(id: $id) {
+    ...CalorimetricDataPartial
+  }
+}
+
+query AllCalorimetricData(
+  $first: Int
+  $after: String
+  $where: CalorimetricDataPropositionInput
+) {
+  connection: allCalorimetricData(first: $first, after: $after, where: $where) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...CalorimetricDataPartial
+      }
     }
   }
 }
 
-# query HasCalorimetricData($where: DataPropositionInput!) {
-#   hasCalorimetricData(where: $where)
-# }
+query HasCalorimetricData($where: CalorimetricDataPropositionInput) {
+  hasData: hasCalorimetricData(where: $where)
+}
 
-query AllCalorimetricData($where: CalorimetricDataPropositionInput) {
-  allCalorimetricData(where: $where) {
-    nodes {
-      ...CalorimetricDataPartial
+query AllCalorimetricDataNames(
+  $first: Int!
+  $after: String
+  $where: CalorimetricDataPropositionInput
+  $order: [CalorimetricDataSortInput!]
+) {
+  connection: allCalorimetricData(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        uuid
+        name
+      }
     }
   }
 }
 
-# query HasCalorimetricData($where: DataPropositionInput!) {
-#   hasCalorimetricData(where: $where)
-# }
+fragment GeometricDataPartial on GeometricData {
+  ...DataPartial
+  thicknesses
+}
+
+query GeometricData($id: Uuid!) {
+  data: geometricData(id: $id) {
+    ...GeometricDataPartial
+  }
+}
+
+query AllGeometricData(
+  $first: Int
+  $after: String
+  $where: GeometricDataPropositionInput
+) {
+  connection: allGeometricData(first: $first, after: $after, where: $where) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...GeometricDataPartial
+      }
+    }
+  }
+}
+
+query HasGeometricData($where: GeometricDataPropositionInput) {
+  hasData: hasGeometricData(where: $where)
+}
+
+query AllGeoemetricDataNames(
+  $first: Int!
+  $after: String
+  $where: GeometricDataPropositionInput
+  $order: [GeometricDataSortInput!]
+) {
+  connection: allGeometricData(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        uuid
+        name
+      }
+    }
+  }
+}
 
 fragment HygrothermalDataPartial on HygrothermalData {
   ...DataPartial
 }
 
-query AllHygrothermalData($where: HygrothermalDataPropositionInput) {
-  allHygrothermalData(where: $where) {
-    nodes {
-      ...HygrothermalDataPartial
+query HygrothermalData($id: Uuid!) {
+  data: hygrothermalData(id: $id) {
+    ...HygrothermalDataPartial
+  }
+}
+
+query AllHygrothermalData(
+  $first: Int
+  $after: String
+  $where: HygrothermalDataPropositionInput
+) {
+  connection: allHygrothermalData(first: $first, after: $after, where: $where) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...HygrothermalDataPartial
+      }
     }
   }
 }
 
-# query HasHygrothermalData($where: DataPropositionInput!) {
-#   hasHygrothermalData(where: $where)
-# }
+query HasHygrothermalData($where: HygrothermalDataPropositionInput) {
+  hasData: hasHygrothermalData(where: $where)
+}
+
+query AllHygrothermalDataNames(
+  $first: Int!
+  $after: String
+  $where: HygrothermalDataPropositionInput
+  $order: [HygrothermalDataSortInput!]
+) {
+  connection: allHygrothermalData(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        uuid
+        name
+      }
+    }
+  }
+}
+
+fragment LifeCycleDataPartial on LifeCycleData {
+  ...DataPartial
+}
+
+query LifeCycleData($id: Uuid!) {
+  data: lifeCycleData(id: $id) {
+    ...LifeCycleDataPartial
+  }
+}
+
+query AllLifeCycleData(
+  $first: Int
+  $after: String
+  $where: LifeCycleDataPropositionInput
+) {
+  connection: allLifeCycleData(first: $first, after: $after, where: $where) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...LifeCycleDataPartial
+      }
+    }
+  }
+}
+
+query HasLifeCycleData($where: LifeCycleDataPropositionInput) {
+  hasData: hasLifeCycleData(where: $where)
+}
+
+query AllLifeCycleDataNames(
+  $first: Int!
+  $after: String
+  $where: LifeCycleDataPropositionInput
+  $order: [LifeCycleDataSortInput!]
+) {
+  connection: allLifeCycleData(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        uuid
+        name
+      }
+    }
+  }
+}
 
 fragment OpticalDataPartial on OpticalData {
   ...DataPartial
+  type
+  subtype
+  coatedSide
   infraredEmittances
   nearnormalHemisphericalSolarReflectances
   nearnormalHemisphericalSolarTransmittances
   nearnormalHemisphericalVisibleReflectances
   nearnormalHemisphericalVisibleTransmittances
+  cielabColors {
+    lStar
+    aStar
+    bStar
+    illuminant
+    observer
+  }
+  colorRenderingIndices
 }
 
-query AllOpticalData($where: OpticalDataPropositionInput) {
-  allOpticalData(where: $where) {
-    nodes {
-      ...OpticalDataPartial
+query OpticalData($id: Uuid!) {
+  data: opticalData(id: $id) {
+    ...OpticalDataPartial
+  }
+}
+
+query AllOpticalData(
+  $first: Int
+  $after: String
+  $where: OpticalDataPropositionInput
+) {
+  connection: allOpticalData(first: $first, after: $after, where: $where) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...OpticalDataPartial
+      }
     }
   }
 }
 
-# query HasOpticalData($where: DataPropositionInput!) {
-#   hasOpticalData(where: $where)
-# }
+query HasOpticalData($where: OpticalDataPropositionInput) {
+  hasData: hasOpticalData(where: $where)
+}
+
+query AllOpticalDataNames(
+  $first: Int!
+  $after: String
+  $where: OpticalDataPropositionInput
+  $order: [OpticalDataSortInput!]
+) {
+  connection: allOpticalData(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        uuid
+        name
+      }
+    }
+  }
+}
 
 fragment PhotovoltaicDataPartial on PhotovoltaicData {
   ...DataPartial
 }
 
-query AllPhotovoltaicData($where: PhotovoltaicDataPropositionInput) {
-  allPhotovoltaicData(where: $where) {
-    nodes {
-      ...PhotovoltaicDataPartial
+query PhotovoltaicData($id: Uuid!) {
+  data: photovoltaicData(id: $id) {
+    ...PhotovoltaicDataPartial
+  }
+}
+
+query AllPhotovoltaicData(
+  $first: Int
+  $after: String
+  $where: PhotovoltaicDataPropositionInput
+) {
+  connection: allPhotovoltaicData(first: $first, after: $after, where: $where) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        ...PhotovoltaicDataPartial
+      }
     }
   }
 }
 
-# query HasPhotovoltaicData($where: DataPropositionInput!) {
-#   hasPhotovoltaicData(where: $where)
-# }
+query HasPhotovoltaicData($where: PhotovoltaicDataPropositionInput) {
+  hasData: hasPhotovoltaicData(where: $where)
+}
+
+query AllPhotovoltaicDataNames(
+  $first: Int!
+  $after: String
+  $where: PhotovoltaicDataPropositionInput
+  $order: [PhotovoltaicDataSortInput!]
+) {
+  connection: allPhotovoltaicData(
+    first: $first
+    after: $after
+    where: $where
+    order: $order
+  ) {
+    totalCount
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+    edges {
+      node {
+        id
+        uuid
+        name
+      }
+    }
+  }
+}

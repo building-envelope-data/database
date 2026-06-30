@@ -1,280 +1,451 @@
 using System;
-using HotChocolate;
-using HotChocolate.Types;
-using HotChocolate.Data.Filters;
-using HotChocolate.Types.Pagination;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using IServiceCollection = Microsoft.Extensions.DependencyInjection.IServiceCollection;
-using Microsoft.Extensions.Logging;
-using HotChocolate.Data;
 using System.Text.RegularExpressions;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Database.Authentication;
+using Database.Data;
+using Database.Enumerations;
+using Database.GraphQl;
 using Database.GraphQl.Filters;
+using Database.GraphQl.Scalars;
+using HotChocolate.AspNetCore;
+using HotChocolate.Configuration;
+using HotChocolate.Data;
+using HotChocolate.Data.Filters;
+using HotChocolate.Data.Filters.Expressions;
+using HotChocolate.Data.Sorting;
+using HotChocolate.Execution;
+using HotChocolate.Language;
+using HotChocolate.Types;
+using HotChocolate.Types.Descriptors;
+using HotChocolate.Types.Descriptors.Configurations;
+using HotChocolate.Types.NodaTime;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using NodaTime;
+using DurationType = HotChocolate.Types.NodaTime.DurationType;
 
-namespace Database.Configuration
+namespace Database.Configuration;
+
+public static class GraphQlConfiguration
 {
-    public static class GraphQlConfiguration
+    public static void ConfigureServices(
+        IServiceCollection services,
+        IWebHostEnvironment environment
+    )
     {
-        public static void ConfigureServices(
-            IServiceCollection services,
-            IWebHostEnvironment environment
-            )
+        // Automatic-Persisted-Queries Services
+        services
+            .AddMemoryCache();
+        // GraphQL Server
+        var serverBuilder = services
+            .AddGraphQLServer();
+        if (environment.IsDevelopment())
         {
-            services.AddGraphQLServer()
-            // Types
-            .AddType<GraphQl.Common.OpenEndedDateTimeRangeType>()
+            // to debug exceptions like `System.InvalidOperationException: The name becomes immutable once it was assigned.`
+            serverBuilder.TryAddTypeInterceptor<LoggingTypeInterceptor>();
+        }
+        serverBuilder
+            .AddSha256DocumentHashProvider(HashFormat.Hex) // https://chillicream.com/docs/hotchocolate/v15/security/#fips-compliance
+            .AddApplicationService<IHttpContextAccessor>() // for `AddHttpRequestInterceptor`
+            .AddApplicationService<ILogger<ErrorLoggingDiagnosticEventListener>>() // for `AddDiagnosticEventListener`
+            .DisableIntrospection(false) // if the introspection result becomes too big we need to disable it in production
+            .RegisterDbContextFactory<ApplicationDbContext>()
+            // .AddInstrumentation()
+            .AddMutationConventions(new MutationConventionOptions { ApplyToAllMutations = false })
             // Extensions
+            .AddNodaTime()
+            .BindRuntimeType<TimeSpan, DurationType>()
+            .AddTypeConverter<Duration, TimeSpan>(_ => _.ToTimeSpan())
+            .AddTypeConverter<TimeSpan, Duration>(_ => Duration.FromTimeSpan(_))
+            // .AddTypeConverter<OffsetDateTime, DateTimeOffset>(
+            //     _ => _.ToDateTimeOffset()
+            // )
+            // .AddTypeConverter<DateTimeOffset, OffsetDateTime>(
+            //     _ => OffsetDateTime.FromDateTimeOffset(_)
+            // )
             .AddProjections()
             .AddFiltering<CustomFilterConvention>()
-            .AddSorting()
+            .AddSorting<CustomSortConvention>()
+            .AddConvention<INamingConventions, CustomNamingConventions>()
+            .AddQueryContext()
             .AddAuthorization()
-            .AddApolloTracing(
-                HotChocolate.Execution.Options.TracingPreference.OnDemand
-            ) // TODO Do we want or need this?
-            .AddGlobalObjectIdentification()
             .AddQueryFieldToMutationPayloads()
-            .ModifyOptions(options =>
-              {
-                  // https://github.com/ChilliCream/hotchocolate/blob/main/src/HotChocolate/Core/src/Types/Configuration/Contracts/ISchemaOptions.cs
-                  options.StrictValidation = true;
-                  options.UseXmlDocumentation = false;
-                  options.SortFieldsByName = true;
-                  options.RemoveUnreachableTypes = false;
-                  options.DefaultBindingBehavior = HotChocolate.Types.BindingBehavior.Implicit;
-                  /* options.FieldMiddleware = ... */
-              }
-              )
-            .ModifyRequestOptions(options =>
+            .AddGlobalObjectIdentification(_ =>
+                {
+                    // _.MaxAllowedNodeBatchSize = 100;
+                    _.EnsureAllNodesCanBeResolved = true;
+                }
+            )
+            .ModifyOptions(_ =>
+                {
+                    // https://github.com/ChilliCream/hotchocolate/blob/main/src/HotChocolate/Core/src/Types/Configuration/Contracts/ISchemaOptions.cs
+                    _.StrictValidation = true;
+                    _.UseXmlDocumentation = false;
+                    _.SortFieldsByName = true;
+                    _.RemoveUnreachableTypes = false;
+                    _.RemoveUnusedTypeSystemDirectives = true;
+                    _.DefaultBindingBehavior = BindingBehavior.Implicit;
+                    // options.DefaultFieldBindingFlags = FieldBindingFlags.InstanceAndStatic;
+                    _.EnableDirectiveIntrospection = true;
+                    _.EnableOptInFeatures = true;
+                    _.DefaultDirectiveVisibility = DirectiveVisibility.Public;
+                    _.DefaultResolverStrategy = ExecutionStrategy.Parallel;
+                    _.ValidatePipelineOrder = true;
+                    _.StrictRuntimeTypeValidation = true;
+                    _.EnableFlagEnums = false;
+                    _.EnableDefer = false;
+                    _.EnableStream = false;
+                    _.StripLeadingIFromInterface = false;
+                    _.EnableTag = true;
+                    _.PublishRootFieldPagesToPromiseCache = true;
+                    // options.OperationDocumentCacheSize = 200;
+                    // options.PreparedOperationCacheSize = 100;
+                }
+            )
+            .ModifyServerOptions(_ =>
+                {
+                    _.AllowedGetOperations = AllowedGetOperations.Query;
+                    _.Batching = AllowedBatching.All;
+                    _.EnableGetRequests = false;
+                    _.EnableMultipartRequests = true;
+                    _.EnableSchemaRequests = true;
+                    // Nitro
+                    _.Tool.DisableTelemetry = true;
+                    _.Tool.Enable = true; // environment.IsDevelopment()
+                    _.Tool.GraphQLEndpoint = GraphQlConstants.EndpointPath;
+                    _.Tool.IncludeCookies = false;
+                    _.Tool.Title = "GraphQL";
+                    _.Tool.UseBrowserUrlAsGraphQLEndpoint = false;
+                    _.Tool.UseGet = false;
+                }
+            )
+            .ModifyRequestOptions(_ =>
                 {
                     // https://github.com/ChilliCream/hotchocolate/blob/main/src/HotChocolate/Core/src/Execution/Options/RequestExecutorOptions.cs
-                    /* options.ExecutionTimeout = ...; */
-                    options.IncludeExceptionDetails = environment.IsDevelopment(); // Default is `Debugger.IsAttached`.
-                    /* options.QueryCacheSize = ...; */
-                    /* options.UseComplexityMultipliers = ...; */
+                    _.ExecutionTimeout = TimeSpan.FromSeconds(120);
+                    _.IncludeExceptionDetails = !environment.IsProduction(); // Default is `Debugger.IsAttached`.
+                    _.AllowErrorHandlingModeOverride = true;
+                    // options.QueryCacheSize = ...;
+                    // options.UseComplexityMultipliers = ...;
+                    // options.EnableSchemaFileSupport = true;
                 }
-                )
-                  // TODO Configure `https://github.com/ChilliCream/hotchocolate/blob/main/src/HotChocolate/Core/src/Validation/Options/ValidationOptions.cs`. But how?
-                  // Subscriptions
-                  /* .AddInMemorySubscriptions() */
-                  // TODO Persisted queries
-                  /* .AddFileSystemQueryStorage("./persisted_queries") */
-                  /* .UsePersistedQueryPipeline(); */
-                  .AddHttpRequestInterceptor(async (httpContext, requestExecutor, requestBuilder, cancellationToken) =>
-                  {
-                      // HotChocolate uses the default cookie authentication
-                      // scheme `IdentityConstants.ApplicationScheme` by
-                      // default.
-                      var authenticateResult = await httpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme).ConfigureAwait(false);
-                      if (authenticateResult.Succeeded && authenticateResult.Principal is not null)
-                      {
-                          httpContext.User = authenticateResult.Principal;
-                      }
-                  })
-                  .AddDiagnosticEventListener(_ =>
-                      new GraphQl.LoggingDiagnosticEventListener(
-                          _.GetApplicationService<ILogger<GraphQl.LoggingDiagnosticEventListener>>()
-                      )
-                  )
-                  .AddQueryType(d => d.Name(nameof(GraphQl.Query)))
-                      .AddType<GraphQl.CalorimetricDataX.CalorimetricDataQueries>()
-                      .AddType<GraphQl.DataX.DataQueries>()
-                      .AddType<GraphQl.GetHttpsResources.GetHttpsResourceQueries>()
-                      .AddType<GraphQl.HygrothermalDataX.HygrothermalDataQueries>()
-                      .AddType<GraphQl.OpticalDataX.OpticalDataQueries>()
-                      .AddType<GraphQl.PhotovoltaicDataX.PhotovoltaicDataQueries>()
-                  .AddMutationType(d => d.Name(nameof(GraphQl.Mutation)))
-                      .AddType<GraphQl.CalorimetricDataX.CalorimetricDataMutations>()
-                      .AddType<GraphQl.GetHttpsResources.GetHttpsResourceMutations>()
-                      .AddType<GraphQl.HygrothermalDataX.HygrothermalDataMutations>()
-                      .AddType<GraphQl.OpticalDataX.OpticalDataMutations>()
-                      .AddType<GraphQl.PhotovoltaicDataX.PhotovoltaicDataMutations>()
-                  /* .AddSubscriptionType(d => d.Name(nameof(GraphQl.Subscription))) */
-                  /*     .AddType<ComponentSubscriptions>() */
-                  // Scalar Types
-                  .AddType(new UuidType("Uuid", defaultFormat: 'D')) // https://chillicream.com/docs/hotchocolate/defining-a-schema/scalars#uuid-type
-                  .AddType(new UrlType("Url"))
-                  .AddType(new GraphQl.LocaleType())
-                  // Object Types
-                  .AddType<GraphQl.CalorimetricDataX.CalorimetricDataType>()
-                  .AddType<GraphQl.DataX.DataType>()
-                  .AddType<GraphQl.GetHttpsResources.GetHttpsResourceType>()
-                  .AddType<GraphQl.HygrothermalDataX.HygrothermalDataType>()
-                  .AddType<GraphQl.NamedMethodArgumentType>()
-                  .AddType<GraphQl.OpticalDataX.OpticalDataType>()
-                  .AddType<GraphQl.PhotovoltaicDataX.PhotovoltaicDataType>()
-                  // Data Loaders
-                  /* .AddDataLoader<GraphQl.Components.ComponentByIdDataLoader>() */
-                  // Paging
-                  .SetPagingOptions(
-                      new PagingOptions
-                      {
-                          MaxPageSize = int.MaxValue,
-                          DefaultPageSize = int.MaxValue,
-                          IncludeTotalCount = true,
-                          // TODO I actually want to infer connection names from fields (which is the default in HotChocolate). However, the current `database.graphql` schema that I hand-wrote still infers connection names from types.
-                          InferConnectionNameFromField = false
-                      }
-                  );
-        }
-    }
-
-    // See https://chillicream.com/docs/hotchocolate/fetching-data/filtering/#filter-conventions
-    public class CustomFilterConvention : FilterConvention
-    {
-        protected override void Configure(IFilterConventionDescriptor descriptor)
-        {
-            descriptor.AddDefaults();
-            // Use argument name `where`
-            descriptor.ArgumentName("where");
-            // Allow conjunction and disjunction
-            descriptor.AllowAnd();
-            descriptor.AllowOr();
-            // Bind custom types
-            descriptor.BindRuntimeType<Data.GetHttpsResource, GraphQl.GetHttpsResources.GetHttpsResourceFilterType>();
-            descriptor.BindRuntimeType<Data.NamedMethodArgument, GraphQl.NamedMethodArgumentFilterType>();
-            descriptor.BindRuntimeType<Data.CalorimetricData, GraphQl.CalorimetricDataX.CalorimetricDataFilterType>();
-            descriptor.BindRuntimeType<Data.IData, GraphQl.DataX.DataFilterType>();
-            descriptor.BindRuntimeType<Data.HygrothermalData, GraphQl.HygrothermalDataX.HygrothermalDataFilterType>();
-            descriptor.BindRuntimeType<Data.OpticalData, GraphQl.OpticalDataX.OpticalDataFilterType>();
-            descriptor.BindRuntimeType<Data.PhotovoltaicData, GraphQl.PhotovoltaicDataX.PhotovoltaicDataFilterType>();
-        }
-
-        // TODO Overriding and changing type names in this way is _super_ error-prone. However, using `descriptor.Configure<...FilterInputType<T>>(x => x.Name(name))` does not work. Why?
-        // For the base implementation see https://github.com/ChilliCream/hotchocolate/blob/f0dff93a14cb7ddecc7b3a0530a687a5bc4bad71/src/HotChocolate/Data/src/Data/Filters/Convention/FilterConvention.cs#L129
-        public override NameString GetTypeName(Type runtimeType)
-        {
-            var nameString = base.GetTypeName(runtimeType);
-            if (!nameString.HasValue)
+            )
+            .ModifyCostOptions(_ =>
+                {
+                    _.MaxFieldCost = 40000;
+                    _.MaxTypeCost = 40000;
+                }
+            )
+            // Configure
+            // `https://github.com/ChilliCream/hotchocolate/blob/main/src/HotChocolate/Core/src/Validation/Options/ValidationOptions.cs`.
+            // .AddMaxExecutionDepthRule(5)
+            // .SetIntrospectionAllowedDepth(maxAllowedOfTypeDepth: 16, maxAllowedListRecursiveDepth: 1)
+            // .SetMaxAllowedValidationErrors(5)
+            // Subscriptions
+            /* .AddInMemorySubscriptions() */
+            // Persisted queries
+            /* .AddFileSystemOperationDocumentStorage("./persisted_operations") */
+            /* .UsePersistedOperationPipeline(); */
+            .AddHttpRequestInterceptor(async (httpContext, requestExecutor, requestBuilder, cancellationToken) =>
             {
-                return nameString;
-            }
-            return
-                new Regex(@"IData").Replace(
-                    new Regex(@"Double").Replace(
-                        new Regex(@"Float").Replace(
-                            new Regex(@"ListString").Replace(
-                                new Regex(@"ListFloat").Replace(
-                                    new Regex(@"Guid").Replace(
-                                        new Regex(@"^Comparable").Replace(
-                                            new Regex(@"FilterInput$").Replace(
-                                                new Regex(@"OperationFilterInput").Replace(
-                                                    nameString.Value,
-                                                    "PropositionInput"
-                                                ),
-                                                "PropositionInput"
-                                            ),
-                                            ""
-                                        ),
-                                        "Uuid"
-                                    ),
-                                    "Floats"
-                                ),
-                                "Strings"
-                            ),
-                            "Float"
-                        ),
-                        "Float"
-                    ),
-                    "Data"
-                );
-        }
+                await httpContext.RequestServices
+                    .GetRequiredService<GraphQlAuthenticationAndAntiforgeryHandler>()
+                    .HandleAsync(httpContext, cancellationToken);
+            })
+            .AddDiagnosticEventListener(_ =>
+                new ErrorLoggingDiagnosticEventListener(
+                    _.GetRequiredService<ILogger<ErrorLoggingDiagnosticEventListener>>()
+                )
+            )
+            // Scalar Types
+            // TODO Add `MyUuidType` based on https://github.com/ChilliCream/graphql-platform/blob/main/src/HotChocolate/Core/src/Types/Types/Scalars/UuidType.cs
+            .AddType(new UuidType("Uuid", defaultFormat: 'D')) // https://chillicream.com/docs/hotchocolate/defining-a-schema/scalars#uuid-type
+            .AddType(new MyUriType())
+            .AddType(new AnyType("Any"))
+            .AddType<ArXivType>()
+            .AddType<DoiType>()
+            .AddType<GraphQlQueryType>()
+            .AddType<LocaleType>()
+            .BindRuntimeType<uint, NonNegativeIntType>()
+            // Query, Mutation, Subscription, Object, and Input Types
+            .AddQueryType(_ => _.Name(nameof(Query)))
+            .AddMutationType(_ => _.Name(nameof(Mutation)))
+            // .AddSubscriptionType(_ => _.Name(nameof(Subscription)))
+            // auto-discover using `HotChocolate.Types.Analyzers`
+            .AddTypes()
+            // Paging
+            .AddDbContextCursorPagingProvider()
+            // .AddCursorKeySerializer(new OffsetDateTimeCursorKeySerializer())
+            .ModifyPagingOptions(_ =>
+                {
+                    _.MaxPageSize = (int)GraphQlConstants.MaximumPageSize;
+                    _.DefaultPageSize = (int)GraphQlConstants.MaximumPageSize;
+                    _.IncludeTotalCount = true;
+                    _.IncludeNodesField = false;
+                    // TODO I actually want to infer connection names from fields (which is the default in HotChocolate). However, the current `database.graphql` schema that I hand-wrote still infers connection names from types.
+                    _.InferConnectionNameFromField = false;
+                }
+            )
+            // Automatic Peristed Queries
+            .UseAutomaticPersistedOperationPipeline()
+            .AddInMemoryOperationDocumentStorage(); // Needed by the automatic persisted operation pipeline
     }
 
-    public static class FilterConventionDescriptorExtensions
+    // 
+    // private sealed class MyUuidType : UuidType
+    // {
+    //     private const string SpecifiedByString = "https://tools.ietf.org/html/rfc4122";
+    //
+    //     public MyUuidType(
+    //         string name,
+    //         string? description = null,
+    //         char defaultFormat = '\0',
+    //         bool enforceFormat = false,
+    //         BindingBehavior bind = BindingBehavior.Explicit
+    //     )
+    //         : base(name, description, defaultFormat, enforceFormat,
+    //             bind)
+    //     {
+    //         SpecifiedBy = new Uri(SpecifiedByString, UriKind.Absolute);
+    //     }
+    // }
+
+}
+
+// https://github.com/ChilliCream/graphql-platform/blob/main/src/HotChocolate/Core/src/Types/Configuration/TypeInterceptor.cs
+public sealed class LoggingTypeInterceptor
+: TypeInterceptor
+{
+    public override void OnBeforeInitialize(ITypeDiscoveryContext discoveryContext)
     {
-        // Inspired by FilterConventionDescriptorExtensions#AddDefaults
-        // https://github.com/ChilliCream/hotchocolate/blob/ee5813646fdfea81035c681989793514f33b5d94/src/HotChocolate/Data/src/Data/Filters/Convention/Extensions/FilterConventionDescriptorExtensions.cs#L16
-        public static IFilterConventionDescriptor AddDefaults(
-            this IFilterConventionDescriptor descriptor) =>
-            descriptor.AddDefaultOperations().BindDefaultTypes().UseQueryableProvider();
-
-        // Inspired by FilterConventionDescriptorExtensions#AddDefaultOperations
-        // https://github.com/ChilliCream/hotchocolate/blob/ee5813646fdfea81035c681989793514f33b5d94/src/HotChocolate/Data/src/Data/Filters/Convention/Extensions/FilterConventionDescriptorExtensions.cs#L28
-        public static IFilterConventionDescriptor AddDefaultOperations(
-            this IFilterConventionDescriptor descriptor)
-        {
-            descriptor.Operation(DefaultFilterOperations.Equals).Name("equalTo");
-            descriptor.Operation(DefaultFilterOperations.NotEquals).Name("notEqualTo");
-            descriptor.Operation(DefaultFilterOperations.GreaterThan).Name("greaterThan");
-            descriptor.Operation(DefaultFilterOperations.NotGreaterThan).Name("notGreaterThan");
-            descriptor.Operation(DefaultFilterOperations.GreaterThanOrEquals).Name("greaterThanOrEqualTo");
-            descriptor.Operation(DefaultFilterOperations.NotGreaterThanOrEquals).Name("notGreaterThanOrEqualTo");
-            descriptor.Operation(DefaultFilterOperations.LowerThan).Name("lessThan");
-            descriptor.Operation(DefaultFilterOperations.NotLowerThan).Name("lessThan");
-            descriptor.Operation(DefaultFilterOperations.LowerThanOrEquals).Name("notLessThanOrEqualTo");
-            descriptor.Operation(DefaultFilterOperations.NotLowerThanOrEquals).Name("notLessThanOrEqualTo");
-            descriptor.Operation(DefaultFilterOperations.Contains).Name("contains");
-            descriptor.Operation(DefaultFilterOperations.NotContains).Name("doesNotContain");
-            descriptor.Operation(DefaultFilterOperations.In).Name("in");
-            descriptor.Operation(DefaultFilterOperations.NotIn).Name("notIn");
-            descriptor.Operation(DefaultFilterOperations.StartsWith).Name("startsWith");
-            descriptor.Operation(DefaultFilterOperations.NotStartsWith).Name("doesNotStartWith");
-            descriptor.Operation(DefaultFilterOperations.EndsWith).Name("endsWith");
-            descriptor.Operation(DefaultFilterOperations.NotEndsWith).Name("doesNotEndWith");
-            descriptor.Operation(DefaultFilterOperations.All).Name("all");
-            descriptor.Operation(DefaultFilterOperations.None).Name("none");
-            descriptor.Operation(DefaultFilterOperations.Some).Name("some");
-            descriptor.Operation(DefaultFilterOperations.Any).Name("any");
-            descriptor.Operation(DefaultFilterOperations.And).Name("and");
-            descriptor.Operation(DefaultFilterOperations.Or).Name("or");
-            descriptor.Operation(DefaultFilterOperations.Data).Name("data");
-            descriptor.Operation(AdditionalFilterOperations.Not).Name("not");
-            // TODO `inClosedInterval`
-            return descriptor;
-        }
-
-        // Inspired by FilterConventionDescriptorExtensions#BindDefaultTypes
-        // https://github.com/ChilliCream/hotchocolate/blob/ee5813646fdfea81035c681989793514f33b5d94/src/HotChocolate/Data/src/Data/Filters/Convention/Extensions/FilterConventionDescriptorExtensions.cs#L73
-        public static IFilterConventionDescriptor BindDefaultTypes(
-            this IFilterConventionDescriptor descriptor)
-        {
-            descriptor
-                .BindRuntimeType<string, StringOperationFilterInputType>()
-                .BindRuntimeType<bool, BooleanOperationFilterInputType>()
-                .BindRuntimeType<bool?, BooleanOperationFilterInputType>()
-                .BindComparableType<byte>("BytePropositionInput")
-                .BindComparableType<short>("ShortPropositionInput")
-                .BindComparableType<int>("IntPropositionInput")
-                .BindComparableType<long>("LongPropositionInput")
-                .BindComparableType<float>("FloatXPropositionInput")
-                .BindComparableType<double>("FloatPropositionInput")
-                .BindComparableType<decimal>("DecimalPropositionInput")
-                .BindComparableType<sbyte>("SignedBytePropositionInput")
-                .BindComparableType<ushort>("UnsignedShortPropositionInput")
-                .BindComparableType<uint>("UnsignedIntPropositionInput")
-                .BindComparableType<ulong>("UnsigendLongPropositionInput")
-                .BindComparableType<Guid>("UuidPropositionInput")
-                .BindComparableType<DateTime>("DateTimePropositionInput")
-                .BindComparableType<DateTimeOffset>("DateTimeOffsetPropositionInput")
-                .BindComparableType<TimeSpan>("TimeSpanPropositionInput");
-            // TODO Why does this not work?
-            // descriptor
-            //     .Configure<StringOperationFilterInputType>(x => x.Name("StringPropositionInput"))
-            //     .Configure<BooleanOperationFilterInputType>(x => x.Name("BooleanPropositionInput"));
-            return descriptor;
-        }
-
-        // Inspired by FilterConventionDescriptorExtensions#FilterConventionDescriptorExtensions
-        // https://github.com/ChilliCream/hotchocolate/blob/ee5813646fdfea81035c681989793514f33b5d94/src/HotChocolate/Data/src/Data/Filters/Convention/Extensions/FilterConventionDescriptorExtensions.cs#L102
-        private static IFilterConventionDescriptor BindComparableType<T>(
-            this IFilterConventionDescriptor descriptor,
-            string? name = null)
-            where T : struct
-        {
-            descriptor
-                .BindRuntimeType<T, ComparableOperationFilterInputType<T>>()
-                .BindRuntimeType<T?, ComparableOperationFilterInputType<T?>>();
-            // TODO Why does this not work?
-            // if (name is not null)
-            // {
-            //     descriptor
-            //         .Configure<ComparableOperationFilterInputType<T>>(x => x.Name(name))
-            //         .Configure<ComparableOperationFilterInputType<T?>>(x => x.Name($"Maybe{name}"));
-            // }
-            return descriptor;
-        }
+        Console.WriteLine($"[INIT] Discovered type '{discoveryContext.Type.GetType().Name}'");
     }
+
+    public override void OnBeforeCompleteName(ITypeCompletionContext completionContext, TypeSystemConfiguration configuration)
+    {
+        Console.WriteLine($"[NAME] Finalizing name '{configuration.Name}' for type '{completionContext.Type.GetType().Name}'");
+    }
+
+    public override void OnAfterCompleteType(ITypeCompletionContext completionContext, TypeSystemConfiguration configuration)
+    {
+        Console.WriteLine($"[DONE] Completed type '{completionContext.Type.GetType().Name}' with name '{configuration.Name}'");
+    }
+}
+
+public sealed partial class CustomNamingConventions
+: DefaultNamingConventions
+{
+    public static string CorrectPlural(string name) => name
+        .Replace("Policys", "Policies")
+        .Replace($"{nameof(FileMetaInformation)}s", "FilesMetaInformation");
+
+    // `(?!...)` is a negative lookahead. It is a zero-width assertion, meaning
+    // that it does not move the regex engine's cursor (nor consume text).
+    [GeneratedRegex(@$"^({nameof(FilterInputType)}Of|{nameof(Nullable)}Of(?!{nameof(DataKind)}))")]
+    private static partial Regex PrefixesToRemoveRegex();
+
+    public override string GetTypeName(Type type) =>
+        PrefixesToRemoveRegex().Replace(
+            base.GetTypeName(type),
+            string.Empty
+        );
+}
+
+// See https://chillicream.com/docs/hotchocolate/fetching-data/filtering/#filter-conventions
+public sealed partial class CustomFilterConvention : FilterConvention
+{
+    [GeneratedRegex(@$"({nameof(FilterInputType)}|{GraphQlConstants.FilterInputSuffix}|FilterType|FilterInput)$")]
+    private static partial Regex FilterInputSuffixesToReplaceRegex();
+
+    private readonly CustomNamingConventions _namingConventions = new();
+
+    protected override void Configure(IFilterConventionDescriptor descriptor)
+    {
+        descriptor.AddDefaults();
+        // Use argument name `where`
+        descriptor.ArgumentName("where");
+        // Allow conjunction and disjunction
+        descriptor.AllowAnd();
+        descriptor.AllowOr();
+        // TODO negation "AllowNot" and "UseNot". See `NotField` and `EntityFilterType.OnCompleteFields`
+        // Add in-closed-interval operation
+        descriptor
+            .Operation(AdditionalFilterOperations.InClosedInterval)
+            .Name("inClosedInterval");
+        descriptor.Configure<FloatFilterInputType>(_ => _
+            .Operation(AdditionalFilterOperations.InClosedInterval)
+            .Type<InputObjectType<ClosedIntervalInput>>()
+        );
+        descriptor.Provider(
+            new QueryableFilterProvider(_ => _
+                .AddDefaultFieldHandlers()
+                .AddFieldHandler<QueryableComparableInClosedIntervalHandler>(context =>
+                    new QueryableComparableInClosedIntervalHandler(context.TypeConverter, context.InputParser)
+                )
+            )
+        );
+    }
+
+    // For the base implementation see https://github.com/ChilliCream/graphql-platform/blob/develop/src/HotChocolate/Data/src/Data/Filters/Convention/FilterConvention.cs#L129
+    public override string GetTypeName(Type runtimeType) =>
+        CustomNamingConventions.CorrectPlural(
+            GetTypeName(runtimeType, plural: false)
+        );
+
+    private string GetTypeName(Type runtimeType, bool plural)
+    {
+        ArgumentNullException.ThrowIfNull(runtimeType);
+        var pluralSuffix = plural ? "s" : "";
+        if (typeof(IEnumOperationFilterInputType).IsAssignableFrom(runtimeType)
+            && runtimeType.GenericTypeArguments.Length == 1
+            && runtimeType.GetGenericTypeDefinition() == typeof(EnumOperationFilterInputType<>)
+        )
+        {
+            var genericName = _namingConventions.GetTypeName(runtimeType.GenericTypeArguments[0]);
+            return $"{genericName}{pluralSuffix}{GraphQlConstants.FilterInputSuffix}";
+        }
+        if (typeof(IComparableOperationFilterInputType).IsAssignableFrom(runtimeType)
+            && runtimeType.GenericTypeArguments.Length == 1
+            && runtimeType.GetGenericTypeDefinition()
+            == typeof(ComparableOperationFilterInputType<>)
+        )
+        {
+            var genericName = _namingConventions.GetTypeName(runtimeType.GenericTypeArguments[0]);
+            return $"Comparable{genericName}{pluralSuffix}{GraphQlConstants.FilterInputSuffix}";
+        }
+        if (typeof(IListFilterInputType).IsAssignableFrom(runtimeType)
+            && runtimeType.GenericTypeArguments.Length == 1
+        )
+        {
+            var genericType = runtimeType.GenericTypeArguments[0];
+            return typeof(FilterInputType).IsAssignableFrom(genericType)
+                ? GetTypeName(genericType, plural: true)
+                : $"{_namingConventions.GetTypeName(genericType)}{pluralSuffix}";
+        }
+        var name = _namingConventions.GetTypeName(runtimeType);
+        if (typeof(FilterInputType).IsAssignableFrom(runtimeType) || !name.EndsWith("FilterInput", StringComparison.InvariantCulture))
+        {
+            return $"{FilterInputSuffixesToReplaceRegex().Replace(name, string.Empty)}{pluralSuffix}{GraphQlConstants.FilterInputSuffix}";
+        }
+        return $"{name}{pluralSuffix}";
+    }
+}
+
+public static class CustomFilterConventionExtensions
+{
+    // Inspired by FilterConventionDescriptorExtensions#AddDefaults
+    // https://github.com/ChilliCream/hotchocolate/blob/ee5813646fdfea81035c681989793514f33b5d94/src/HotChocolate/Data/src/Data/Filters/Convention/Extensions/FilterConventionDescriptorExtensions.cs#L16
+    public static IFilterConventionDescriptor AddDefaults(
+        this IFilterConventionDescriptor descriptor)
+    {
+        return descriptor
+            .AddDefaultOperations()
+            .BindDefaultTypes()
+            .UseQueryableProvider();
+    }
+
+    // Inspired by FilterConventionDescriptorExtensions#AddDefaultOperations
+    // https://github.com/ChilliCream/graphql-platform/blob/ee5813646fdfea81035c681989793514f33b5d94/src/HotChocolate/Data/src/Data/Filters/Convention/Extensions/FilterConventionDescriptorExtensions.cs#L28
+    public static IFilterConventionDescriptor AddDefaultOperations(
+        this IFilterConventionDescriptor descriptor
+    )
+    {
+        // Use speaking names for operations
+        descriptor.Operation(DefaultFilterOperations.Equals).Name("equalTo");
+        descriptor.Operation(DefaultFilterOperations.NotEquals).Name("notEqualTo");
+        descriptor.Operation(DefaultFilterOperations.Contains).Name("contains");
+        descriptor.Operation(DefaultFilterOperations.NotContains).Name("doesNotContain");
+        descriptor.Operation(DefaultFilterOperations.In).Name("in");
+        descriptor.Operation(DefaultFilterOperations.NotIn).Name("notIn");
+        descriptor.Operation(DefaultFilterOperations.StartsWith).Name("startsWith");
+        descriptor.Operation(DefaultFilterOperations.NotStartsWith).Name("doesNotStartWith");
+        descriptor.Operation(DefaultFilterOperations.EndsWith).Name("endsWith");
+        descriptor.Operation(DefaultFilterOperations.NotEndsWith).Name("doesNotEndWith");
+        descriptor.Operation(DefaultFilterOperations.And).Name("and");
+        descriptor.Operation(DefaultFilterOperations.Or).Name("or");
+        descriptor.Operation(DefaultFilterOperations.GreaterThan).Name("greaterThan");
+        descriptor.Operation(DefaultFilterOperations.NotGreaterThan).Name("notGreaterThan");
+        descriptor.Operation(DefaultFilterOperations.GreaterThanOrEquals).Name("greaterThanOrEqualTo");
+        descriptor.Operation(DefaultFilterOperations.NotGreaterThanOrEquals).Name("notGreaterThanOrEqualTo");
+        descriptor.Operation(DefaultFilterOperations.LowerThan).Name("lessThan");
+        descriptor.Operation(DefaultFilterOperations.NotLowerThan).Name("notLessThan");
+        descriptor.Operation(DefaultFilterOperations.LowerThanOrEquals).Name("lessThanOrEqualTo");
+        descriptor.Operation(DefaultFilterOperations.NotLowerThanOrEquals).Name("notLessThanOrEqualTo");
+        descriptor.Operation(DefaultFilterOperations.Some).Name("some");
+        descriptor.Operation(DefaultFilterOperations.All).Name("all");
+        descriptor.Operation(DefaultFilterOperations.None).Name("none");
+        descriptor.Operation(DefaultFilterOperations.Any).Name("any");
+        descriptor.Operation(DefaultFilterOperations.Like).Name("like");
+        descriptor.Operation(DefaultFilterOperations.Data).Name("data");
+        return descriptor;
+    }
+
+    // Inspired by FilterConventionDescriptorExtensions#BindDefaultTypes
+    // https://github.com/ChilliCream/hotchocolate/blob/ee5813646fdfea81035c681989793514f33b5d94/src/HotChocolate/Data/src/Data/Filters/Convention/Extensions/FilterConventionDescriptorExtensions.cs#L73
+    public static IFilterConventionDescriptor BindDefaultTypes(
+        this IFilterConventionDescriptor descriptor
+    )
+    {
+        return descriptor
+            .BindRuntimeType<string, StringFilterInputType>()
+            .BindRuntimeType<bool, BooleanFilterInputType>()
+            .BindRuntimeType<bool?, BooleanFilterInputType>()
+            .BindRuntimeType<byte, ByteFilterInputType>()
+            .BindRuntimeType<byte?, ByteFilterInputType>()
+            .BindRuntimeType<sbyte, ByteFilterInputType>()
+            .BindRuntimeType<sbyte?, ByteFilterInputType>()
+            .BindRuntimeType<short, ShortFilterInputType>()
+            .BindRuntimeType<short?, ShortFilterInputType>()
+            .BindRuntimeType<int, IntFilterInputType>()
+            .BindRuntimeType<int?, IntFilterInputType>()
+            .BindRuntimeType<uint, NonNegativeIntFilterInputType>()
+            .BindRuntimeType<uint?, NonNegativeIntFilterInputType>()
+            .BindRuntimeType<long, LongFilterInputType>()
+            .BindRuntimeType<long?, LongFilterInputType>()
+            .BindRuntimeType<float, FloatFilterInputType>()
+            .BindRuntimeType<float?, FloatFilterInputType>()
+            .BindRuntimeType<double, FloatFilterInputType>()
+            .BindRuntimeType<double?, FloatFilterInputType>()
+            .BindRuntimeType<decimal, DecimalFilterInputType>()
+            .BindRuntimeType<decimal?, DecimalFilterInputType>()
+            .BindRuntimeType<Guid, UuidFilterInputType>()
+            .BindRuntimeType<Guid?, UuidFilterInputType>()
+            .BindRuntimeType<DateTime, DateTimeFilterInputType>()
+            .BindRuntimeType<DateTime?, DateTimeFilterInputType>()
+            .BindRuntimeType<OffsetDateTime, DateTimeFilterInputType>()
+            .BindRuntimeType<OffsetDateTime?, DateTimeFilterInputType>()
+            .BindRuntimeType<DateTimeOffset, DateTimeFilterInputType>()
+            .BindRuntimeType<DateTimeOffset?, DateTimeFilterInputType>()
+            .BindRuntimeType<Instant, DateTimeFilterInputType>()
+            .BindRuntimeType<Instant?, DateTimeFilterInputType>()
+            .BindRuntimeType<LocalDateTime, LocalDateTimeFilterInputType>()
+            .BindRuntimeType<LocalDateTime?, LocalDateTimeFilterInputType>()
+            .BindRuntimeType<LocalDate, LocalDateFilterInputType>()
+            .BindRuntimeType<LocalDate?, LocalDateFilterInputType>()
+            .BindRuntimeType<LocalTime, LocalTimeFilterInputType>()
+            .BindRuntimeType<LocalTime?, LocalTimeFilterInputType>()
+            .BindRuntimeType<TimeSpan, DurationFilterInputType>()
+            .BindRuntimeType<TimeSpan?, DurationFilterInputType>()
+            .BindRuntimeType<Duration, DurationFilterInputType>()
+            .BindRuntimeType<Duration?, DurationFilterInputType>()
+            .BindRuntimeType<Uri, UriFilterInputType>()
+            .BindRuntimeType<Uri?, UriFilterInputType>();
+    }
+}
+
+// See https://chillicream.com/docs/hotchocolate/fetching-data/sorting/#sorting-conventions
+public sealed partial class CustomSortConvention : SortConvention
+{
+    protected override void Configure(ISortConventionDescriptor descriptor)
+    {
+        descriptor.AddDefaults();
+    }
+
+    // For the base implementation see https://github.com/ChilliCream/graphql-platform/blob/develop/src/HotChocolate/Data/src/Data/Sorting/Convention/SortConvention.cs#L134C5
+    public override string GetTypeName(Type runtimeType) =>
+        CustomNamingConventions.CorrectPlural(
+            base.GetTypeName(runtimeType)
+        );
 }

@@ -1,224 +1,469 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Net.Http;
+using System.Net.Mime;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Database.ApiRequests;
 using Database.Configuration;
+using Database.Data;
 using Database.Data.Extensions;
-using HotChocolate.AspNetCore;
+using Database.Enumerations;
+using Database.GraphQl;
+using Database.Services;
+using Laraue.EfCoreTriggers.PostgreSql.Extensions;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.OpenApi;
+using NodaTime;
+using Npgsql;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Logs;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Trace;
+using Scalar.AspNetCore;
 using Serilog;
 
-namespace Database
+namespace Database;
+
+public sealed class Startup(
+    IWebHostEnvironment environment,
+    IConfiguration configuration
+)
 {
-    public sealed class Startup
+    private readonly AppSettings _appSettings =
+        configuration.Get<AppSettings>(_ =>
+        {
+            _.BindNonPublicProperties = true;
+            _.ErrorOnUnknownConfiguration = false;
+        })
+        ?? throw new InvalidOperationException("Failed to get application settings from configuration.");
+
+    private readonly IClock _clock = SystemClock.Instance;
+
+    public void ConfigureServices(IServiceCollection services)
     {
-        private readonly IWebHostEnvironment _environment;
-        private readonly AppSettings _appSettings;
-
-        public Startup(
-            IWebHostEnvironment environment,
-            IConfiguration configuration
-            )
+        ConfigureDatabaseServices(services);
+        ConfigureRequestResponseServices(services);
+        // ConfigureSessionServices(services); // Not used
+        ConfigureTelemetryServices(services);
+        services.AddAntiforgery(_ =>
         {
-            _environment = environment;
-            _appSettings = configuration.Get<AppSettings>();
-        }
+            _.HeaderName = AntiforgeryConstants.HeaderName;
+        });
+        services
+            .AddDataProtection()
+            .PersistKeysToDbContext<ApplicationDbContext>();
+        ConfigureHttpClientServices(services);
+        services.AddHttpContextAccessor();
+        services
+            .AddHealthChecks()
+            .AddApplicationLifecycleHealthCheck()
+            .AddDbContextCheck<ApplicationDbContext>();
+        services.AddSingleton(_appSettings);
+        services.AddSingleton(environment);
+        services.AddSingleton<IClock>(_clock);
+        // services.AddDatabaseDeveloperPageExceptionFilter();
+        ConfigureCustomServices(services);
+        ConfigureApiRequests(services);
+        AuthConfiguration.ConfigureServices(services, environment, _appSettings, _clock);
+        GraphQlConfiguration.ConfigureServices(services, environment);
+    }
 
-        public void ConfigureServices(IServiceCollection services)
-        {
-            AuthConfiguration.ConfigureServices(services, _appSettings);
-            GraphQlConfiguration.ConfigureServices(services, _environment);
-            ConfigureDatabaseServices(services);
-            ConfigureMessageSenderServices(services);
-            ConfigureRequestResponseServices(services);
-            ConfigureSessionServices(services);
-            services.AddHttpClient();
-            services
-                .AddHealthChecks()
-                .AddDbContextCheck<Data.ApplicationDbContext>();
-            services.AddSingleton(_appSettings);
-            services.AddSingleton(_environment);
-            // services.AddDatabaseDeveloperPageExceptionFilter();
-        }
-
-        private static void ConfigureRequestResponseServices(IServiceCollection services)
-        {
-            // https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer#forwarded-headers-middleware-order
-            services.Configure<ForwardedHeadersOptions>(_ =>
+    private static void ConfigureRequestResponseServices(IServiceCollection services)
+    {
+        // https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer#forwarded-headers-middleware-order
+        services.Configure<ForwardedHeadersOptions>(_ =>
             {
-                // TODO _.AllowedHosts = ...
-                _.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                _.ForwardedHeaders =
+                    ForwardedHeaders.XForwardedFor |
+                    ForwardedHeaders.XForwardedProto |
+                    ForwardedHeaders.XForwardedHost;
                 // https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer#forward-the-scheme-for-linux-and-non-iis-reverse-proxies
-                _.KnownNetworks.Clear();
+                _.KnownIPNetworks.Clear();
                 _.KnownProxies.Clear();
             }
-            );
-            services.AddCors(_ =>
-                _.AddDefaultPolicy(policy =>
+        );
+        services.AddCors(_ =>
+            _.AddPolicy(
+                GraphQlConstants.CorsPolicy,
+                policy =>
                     policy
-                    .AllowAnyOrigin()
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    )
-                );
-            services.AddControllersWithViews();
-        }
-
-        private void ConfigureMessageSenderServices(IServiceCollection services)
+                        .AllowAnyOrigin()
+                        .AllowAnyHeader()
+                        .AllowAnyMethod()
+            )
+        );
+        services.AddControllersWithViews()
+        .AddRazorOptions(_ =>
+            {
+                // The default location formarts are `/Views/{1}/{0}.cshtml` and `/Views/Shared/{0}.cshtml`.
+                // Add the format that ignores the directory structure, that is,
+                // leave out `/Views` and the controller name `{1}`. For some
+                // reason compiled views land in the root directory. The
+                // debugging output of `make logs` when navigating to
+                // https://local.buildingenvelopedata.org:4041/connect/logout?...
+                // is:
+                // Initializing Razor view compiler with compiled view: '/Authorize.cshtml'.
+                // Initializing Razor view compiler with compiled view: '/Logout.cshtml'.
+                // Initializing Razor view compiler with compiled view: '/Verify.cshtml'.
+                // Initializing Razor view compiler with compiled view: '/Error.cshtml'.
+                // Initializing Razor view compiler with compiled view: '/_Layout.cshtml'.
+                // Initializing Razor view compiler with compiled view: '/_ViewImports.cshtml'.
+                // Initializing Razor view compiler with compiled view: '/_ViewStart.cshtml'.
+                // View lookup cache miss for view 'Logout' in controller 'Authorization'.
+                // Could not find a file for view at path '/Views/Authorization/Logout.cshtml'.
+                // Could not find a file for view at path '/Views/Shared/Logout.cshtml'.
+                // Located compiled view for view at path '/Logout.cshtml'.
+                // Located compiled view for view at path '/_ViewStart.cshtml'.
+                // Executing ViewResult, running view Logout.
+                // The view path '/Logout.cshtml' was found in 5.0269ms.
+                _.ViewLocationFormats.Add("/{0}.cshtml");
+                // TODO I consider the flattened structure a bug. How can we solve this?
+            }
+        );
+        services.AddOpenApi(OpenApiConstants.DocumentName, _ =>
         {
-            services.AddTransient<Services.IEmailSender>(serviceProvider =>
-                new Services.EmailSender(
-                    _appSettings.Email.SmtpHost,
-                    _appSettings.Email.SmtpPort,
-                    serviceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Services.EmailSender>>()
-                )
+            _.OpenApiVersion = OpenApiSpecVersion.OpenApi3_0;
+            _.AddScalarTransformers();
+        });
+    }
+
+    // private static void ConfigureSessionServices(
+    //         IServiceCollection services
+    //         )
+    // {
+    //     // https://docs.microsoft.com/en-us/aspnet/core/fundamentals/app-state#session-state
+    //     services.AddDistributedMemoryCache();
+    //     services.AddSession(options =>
+    //     {
+    //         // Set a short timeout for easy testing in development and a long
+    //         // one otherwise.
+    //         options.IdleTimeout =
+    //             environment.IsDevelopment()
+    //             ? TimeSpan.FromSeconds(10)
+    //             : TimeSpan.FromMinutes(30);
+    //         options.Cookie.HttpOnly = true;
+    //         // Make the session cookie essential
+    //         options.Cookie.IsEssential = true;
+    //     });
+    // }
+
+    private void ConfigureTelemetryServices(
+        IServiceCollection services
+    )
+    {
+        services.AddOpenTelemetry()
+            // .WithTracing(_ =>
+            // {
+            //     _.AddAspNetCoreInstrumentation();
+            //     _.AddHttpClientInstrumentation();
+            //     _.AddHotChocolateInstrumentation();
+            //     _.AddOtlpExporter(_ =>
+            //     {
+            //         _.Endpoint = _appSettings.OpenTelemetry.GrpcUri;
+            //         _.Protocol = OtlpExportProtocol.Grpc;
+            //     }
+            //     );
+            //     if (!environment.IsProduction())
+            //     {
+            //         _.AddConsoleExporter();
+            //     }
+            // }
+            // )
+            .WithMetrics(_ =>
+            {
+                _.AddAspNetCoreInstrumentation(); // inbound requests
+                _.AddHttpClientInstrumentation(); // outbound requests
+                _.AddOtlpExporter(_ =>
+                {
+                    _.Endpoint = _appSettings.OpenTelemetry.GrpcUri;
+                    _.Protocol = OtlpExportProtocol.Grpc;
+                }
+                );
+                // if (!environment.IsProduction())
+                // {
+                //     _.AddConsoleExporter();
+                // }
+            }
+            );
+    }
+
+    private void ConfigureDatabaseContext(
+        DbContextOptionsBuilder options
+        )
+    {
+        options
+            .UseNpgsql(
+                _appSettings.Database.ConnectionString(),
+                _ => _
+                    // Keep version in sync with the one in ./docker-compose.*.yaml
+                    .SetPostgresVersion(18, 4)
+                    .UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery) // https://learn.microsoft.com/en-us/ef/core/querying/single-split-queries#enabling-split-queries-globally
+                    .UseNodaTime()
+                    // https://www.npgsql.org/efcore/mapping/enum.html
+                    .MapEnum<CalorimetricObserver>(ApplicationDbContext.CalorimetricObserverTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<CoatedSide>(ApplicationDbContext.CoatedSideTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<DataKind>(ApplicationDbContext.DataKindTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<Illuminant>(ApplicationDbContext.IlluminantTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<LogicalCombinator>(ApplicationDbContext.LogicalCombinatorTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<OpticalComponentSubtype>(ApplicationDbContext.OpticalComponentSubtypeTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<OpticalComponentType>(ApplicationDbContext.OpticalComponentTypeTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<PublishingState>(ApplicationDbContext.PublishingStateTypeName, _appSettings.Database.SchemaName)
+                    .MapEnum<Standardizer>(ApplicationDbContext.StandardizerTypeName, _appSettings.Database.SchemaName)
+            )
+            .UseSchemaName(_appSettings.Database.SchemaName)
+            .UseOpenIddict()
+            .UseProjectables()
+            .UsePostgreSqlTriggers();
+        if (!environment.IsProduction())
+        {
+            options
+                .EnableSensitiveDataLogging()
+                .EnableDetailedErrors();
+        }
+        if (environment.IsEnvironment(Program.TestEnvironment))
+        {
+            options.ConfigureWarnings(_ =>
+                _.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning)
             );
         }
+    }
 
-        private static void ConfigureSessionServices(IServiceCollection services)
-        {
-            // https://docs.microsoft.com/en-us/aspnet/core/fundamentals/app-state#session-state
-            services.AddDistributedMemoryCache();
-            services.AddSession(options =>
-                {
-                    // Set a short timeout for easy testing.
-                    options.IdleTimeout = TimeSpan.FromSeconds(10);
-                    options.Cookie.HttpOnly = true;
-                    // Make the session cookie essential
-                    options.Cookie.IsEssential = true;
-                });
-        }
+    private void ConfigureDatabaseServices(IServiceCollection services)
+    {
+        // Configure the database-context options only once in
+        // `AddPooledDbContextFactory` and not a second time in `AddDbContext`
+        // as suggested in
+        // https://github.com/npgsql/efcore.pg/issues/3375#issuecomment-2509746639
+        services.AddPooledDbContextFactory<ApplicationDbContext>(ConfigureDatabaseContext);
+        // Database context as services are used by `OpenIddict`, see in
+        // particular `AuthConfiguration`.
+        services.AddDbContext<ApplicationDbContext>(options =>
+            { },
+            contextLifetime: ServiceLifetime.Transient,
+            optionsLifetime: ServiceLifetime.Singleton
+        );
+        // services.ConfigureDbContext<ApplicationDbContext>(
+        //     ConfigureDatabaseContext,
+        //     optionsLifetime: ServiceLifetime.Singleton
+        // );
+    }
 
-        private void ConfigureDatabaseServices(IServiceCollection services)
+    private void ConfigureHttpClientServices(IServiceCollection services)
+    {
+        services.AddHttpClient();
+        var httpClientBuilder = services.AddHttpClient(ApiRequestService.CustomHttpClient);
+        if (environment.IsDevelopment())
         {
-            services.AddPooledDbContextFactory<Data.ApplicationDbContext>(options =>
+            httpClientBuilder.ConfigurePrimaryHttpMessageHandler(_ =>
+                new HttpClientHandler
                 {
-                    options
-                    .UseNpgsql(_appSettings.Database.ConnectionString)
-                    .UseSchemaName(_appSettings.Database.SchemaName);
-                    /* .UseNodaTime() */ // https://www.npgsql.org/efcore/mapping/nodatime.html
-                    if (!_environment.IsProduction())
-                    {
-                        options
-                        .EnableSensitiveDataLogging()
-                        .EnableDetailedErrors();
-                    }
+                    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
                 }
-                );
-            // Database context as services are used by `Identity`.
-            services.AddDbContext<Data.ApplicationDbContext>(
-                (services, options) =>
-                {
-                    if (!_environment.IsProduction())
-                    {
-                        options
-                        .EnableSensitiveDataLogging()
-                        .EnableDetailedErrors();
-                    }
-                    services
-                    .GetRequiredService<IDbContextFactory<Data.ApplicationDbContext>>()
-                    .CreateDbContext();
-                },
-                ServiceLifetime.Transient
-                );
+            );
+        }
+    }
+
+    public static void ConfigureCustomServices(IServiceCollection services)
+    {
+        services.AddScoped<AccessPolicyService>();
+        services.AddScoped<ApiRequestService>();
+        services.AddScoped<ResponseApprovalService>();
+        services.AddScoped<UserService>();
+        services.AddSingleton<CacheService>();
+        services.AddSingleton<MethodFactory>();
+        services.AddSingleton<SigningService>();
+        services.AddSingleton<FileManager>();
+    }
+
+    public static void ConfigureApiRequests(IServiceCollection services)
+    {
+        services.AddScoped<GetUserInfo>();
+        services.AddScoped<IsGnuPgFingerprintValid>();
+        services.AddScoped<QueryCurrentUserOrApplication>();
+        services.AddScoped<QueryData>();
+        services.AddScoped<UpdateDatabase>();
+    }
+
+    public void Configure(WebApplication app)
+    {
+        // https://docs.microsoft.com/en-us/aspnet/core/fundamentals/middleware/
+        if (environment.IsDevelopment() || environment.IsEnvironment(Program.TestEnvironment))
+        {
+            app.UseDeveloperExceptionPage();
+            // app.UseMigrationsEndPoint();
+            // Forwarded Headers Middleware must run before other middleware except diagnostics and error handling middleware. In particular before HSTS middleware.
+            // See https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer#other-proxy-server-and-load-balancer-scenarios
+            app.UseForwardedHeaders();
+        }
+        else
+        {
+            app.UseExceptionHandler("/Error");
+            // Forwarded Headers Middleware must run before other middleware except diagnostics and error handling middleware. In particular before HSTS middleware.
+            // See https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer#other-proxy-server-and-load-balancer-scenarios
+            app.UseForwardedHeaders();
+            // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+            // ASP.NET advices to not use HSTS for APIs, see the warning on
+            // https://docs.microsoft.com/en-us/aspnet/core/security/enforcing-ssl
+            // app.UseHsts(); // Done by the reverse proxy, see https://www.nginx.com/blog/http-strict-transport-security-hsts-and-nginx/
         }
 
-        public void Configure(IApplicationBuilder app)
+        app.UseStatusCodePagesWithReExecute("/error"); // [UseStatusCodePages](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/error-handling?view=aspnetcore-9.0#usestatuscodepages)
+        // app.UseHttpsRedirection(); // Done by the reverse proxy
+        app.UseSerilogRequestLogging();
+        app.UseStaticFiles();
+        app.UseCookiePolicy(); // [SameSite cookies](https://learn.microsoft.com/en-us/aspnet/core/security/samesite)
+        app.UseRouting();
+        // [Localization](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/localization)
+        app.UseRequestLocalization(_ =>
         {
-            // https://docs.microsoft.com/en-us/aspnet/core/fundamentals/middleware/
-            if (_environment.IsDevelopment() || _environment.IsEnvironment("test"))
-            {
-                app.UseDeveloperExceptionPage();
-                // app.UseMigrationsEndPoint();
-                // Forwarded Headers Middleware must run before other middleware except diagnostics and error handling middleware. In particular before HSTS middleware.
-                // See https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer#other-proxy-server-and-load-balancer-scenarios
-                app.UseForwardedHeaders();
-            }
-            else
-            {
-                app.UseExceptionHandler("/Error");
-                // Forwarded Headers Middleware must run before other middleware except diagnostics and error handling middleware. In particular before HSTS middleware.
-                // See https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer#other-proxy-server-and-load-balancer-scenarios
-                app.UseForwardedHeaders();
-                // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-                // ASP.NET advices to not use HSTS for APIs, see the warning on
-                // https://docs.microsoft.com/en-us/aspnet/core/security/enforcing-ssl
-                // app.UseHsts(); // Done by NGINX, see https://www.nginx.com/blog/http-strict-transport-security-hsts-and-nginx/
-            }
-            // app.UseStatusCodePages();
-            // app.UseHttpsRedirection(); // Done by NGINX
-            app.UseSerilogRequestLogging();
-            app.UseStaticFiles();
-            app.UseCookiePolicy();
-            app.UseRouting();
-            // TODO Do we really want this? See https://docs.microsoft.com/en-us/aspnet/core/fundamentals/localization?view=aspnetcore-5.0
-            app.UseRequestLocalization(_ =>
-            {
-                _.AddSupportedCultures("en-US", "de-DE");
-                _.AddSupportedUICultures("en-US", "de-DE");
-                _.SetDefaultCulture("en-US");
-            });
-            app.UseCors();
-            // app.UseCertificateForwarding(); // https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-5.0#other-web-proxies
+            _.AddSupportedCultures("en-US");
+            _.AddSupportedUICultures("en-US");
+            _.SetDefaultCulture("en-US");
+        });
+        app.UseCors();
+        // app.UseCertificateForwarding(); // https://docs.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-5.0#other-web-proxies
+        app.UseWhen(context => context.Request.Path.StartsWithSegments("/connect"), appBuilder =>
+        {
             app.UseAuthentication();
-            app.UseAuthorization();
-            app.UseSession();
-            // app.UseResponseCompression(); // Done by Nginx
-            // app.UseResponseCaching(); // Done by Nginx
-            /* app.UseWebSockets(); */
-            app.UseEndpoints(_ =>
+        });
+        app.UseAuthorization();
+        app.UseAntiforgery();
+        // app.UseSession(); // Not used
+        // app.UseResponseCompression(); // Done by the reverse proxy
+        // app.UseResponseCaching(); // Done by the reverse proxy
+        // app.UseWebSockets();
+        app.MapOpenApi(OpenApiConstants.RoutePattern);
+        app.MapScalarApiReference(OpenApiConstants.DocsRoute, _ =>
+        {
+            _.Servers = []; // https://github.com/dotnet/aspnetcore/issues/57332#issuecomment-2480939916
+            _.AddDocument(OpenApiConstants.DocumentName); // For multiple documents see https://guides.scalar.com/scalar/scalar-api-references/integrations/net-aspnet-core/integration#configuration-options__multiple-openapi-documents
+            _.WithOpenApiRoutePattern(OpenApiConstants.RoutePattern);
+        });
+        app.MapGraphQL()
+            .RequireCors(GraphQlConstants.CorsPolicy);
+        app.MapControllers();
+        app.MapHealthChecks("/health",
+            new HealthCheckOptions
             {
-                _.MapGraphQL().WithOptions(
-                    // https://chillicream.com/docs/hotchocolate/server/middleware
-                    new GraphQLServerOptions
+                ResponseWriter = WriteJsonResponse
+            }
+        )
+            .DisableHttpMetrics()
+            .AddOpenApiOperationTransformer((operation, context, cancellationToken) =>
+            {
+                operation.Description = "Checks whether the webserver is healthy.";
+                var responseContent = new Dictionary<string, OpenApiMediaType>
+                {
+                    [MediaTypeNames.Application.Json] = new OpenApiMediaType
                     {
-                        EnableSchemaRequests = true,
-                        EnableGetRequests = false,
-                        // AllowedGetOperations = AllowedGetOperations.Query
-                        EnableMultipartRequests = false,
-                        Tool = {
-                            DisableTelemetry = true,
-                            Enable = true, // _environment.IsDevelopment()
-                            IncludeCookies = false,
-                            GraphQLEndpoint = "/graphql",
-                            HttpMethod = DefaultHttpMethod.Post,
-                            HttpHeaders = new HeaderDictionary
-                            {
-                                { "Content-Type", "application/json" }
-                            },
-                            Title = "GraphQL"
-                        }
+                        Schema = new OpenApiSchema { Type = JsonSchemaType.Object }
                     }
-                );
-                _.MapControllers();
-                _.MapHealthChecks("/health",
-                    new HealthCheckOptions
+                };
+                operation.Responses = new OpenApiResponses
+                {
+                    ["200"] = new OpenApiResponse
                     {
-                        ResponseWriter = JsonResponseWriter
+                        Description = "Healthy",
+                        Content = responseContent
+                    },
+                    ["503"] = new OpenApiResponse
+                    {
+                        Description = "Unhealthy",
+                        Content = responseContent
                     }
-                );
+                };
+                return Task.CompletedTask;
             });
+    }
+
+    // Inspired by https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks?view=aspnetcore-7.0#customize-output
+    private static Task WriteJsonResponse(HttpContext context, HealthReport healthReport)
+    {
+        context.Response.ContentType = MediaTypeNames.Application.Json;
+        var options = new JsonWriterOptions { Indented = true };
+        using var memoryStream = new MemoryStream();
+        using (var jsonWriter = new Utf8JsonWriter(memoryStream, options))
+        {
+            jsonWriter.WriteStartObject();
+            jsonWriter.WriteString("status", healthReport.Status.ToString());
+            jsonWriter.WriteString("duration", healthReport.TotalDuration.ToString());
+            jsonWriter.WriteStartObject("results");
+            foreach (var healthReportEntry in healthReport.Entries)
+            {
+                jsonWriter.WriteStartObject(healthReportEntry.Key);
+                jsonWriter.WriteString("status",
+                    healthReportEntry.Value.Status.ToString());
+                jsonWriter.WriteString("description",
+                    healthReportEntry.Value.Description);
+                jsonWriter.WriteString("duration",
+                    healthReportEntry.Value.Duration.ToString());
+                jsonWriter.WriteStartArray("tags");
+                foreach (var tag in healthReportEntry.Value.Tags)
+                {
+                    jsonWriter.WriteStringValue(tag);
+                }
+
+                jsonWriter.WriteEndArray();
+                var exception = healthReportEntry.Value.Exception;
+                if (exception is not null)
+                {
+                    jsonWriter.WriteStartObject("exception");
+                    jsonWriter.WriteString("message", exception.Message);
+                    if (exception.StackTrace is not null)
+                    {
+                        jsonWriter.WriteString("stackTrace", exception.StackTrace);
+                    }
+
+                    if (exception.InnerException is not null)
+                    {
+                        jsonWriter.WriteString("innerException", exception.InnerException.ToString());
+                    }
+
+                    if (exception.Source is not null)
+                    {
+                        jsonWriter.WriteString("source", exception.Source);
+                    }
+
+                    if (exception.TargetSite is not null)
+                    {
+                        jsonWriter.WriteString("targetSite", exception.TargetSite.ToString());
+                    }
+
+                    jsonWriter.WriteEndObject();
+                }
+
+                jsonWriter.WriteStartObject("data");
+                foreach (var item in healthReportEntry.Value.Data)
+                {
+                    jsonWriter.WritePropertyName(item.Key);
+                    JsonSerializer.Serialize(jsonWriter, item.Value,
+                        item.Value?.GetType() ?? typeof(object));
+                }
+
+                jsonWriter.WriteEndObject();
+                jsonWriter.WriteEndObject();
+            }
+
+            jsonWriter.WriteEndObject();
+            jsonWriter.WriteEndObject();
         }
 
-        private async Task JsonResponseWriter(HttpContext context, HealthReport report)
-        {
-            context.Response.ContentType = "application/json";
-            await JsonSerializer.SerializeAsync(
-                context.Response.Body,
-                report,
-                new JsonSerializerOptions
-                {
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                }
-                ).ConfigureAwait(false);
-        }
+        return context.Response.WriteAsync(
+            Encoding.UTF8.GetString(memoryStream.ToArray()));
     }
 }

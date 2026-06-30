@@ -1,45 +1,107 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Database.Authorization;
+using Database.Data;
+using Database.GraphQl.DataX;
+using Database.GraphQl.Scalars;
+using Database.Services;
 using HotChocolate;
 using HotChocolate.Data;
+using HotChocolate.Resolvers;
 using HotChocolate.Types;
-using Guid = System.Guid;
+using Microsoft.EntityFrameworkCore;
 
-namespace Database.GraphQl.CalorimetricDataX
+namespace Database.GraphQl.CalorimetricDataX;
+
+[ExtendObjectType(nameof(Query))]
+public sealed class CalorimetricDataQueries
+: DataQueriesBase<CalorimetricData>
 {
-    [ExtendObjectType(nameof(Query))]
-    public sealed class CalorimetricDataQueries
+    [UsePaging]
+    [UseFiltering<CalorimetricDataFilterType>]
+    [UseSorting<CalorimetricDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<CalorimetricData>> GetAllCalorimetricDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CancellationToken cancellationToken
+    )
     {
-        [UseDbContext(typeof(Data.ApplicationDbContext))]
-        [UsePaging]
-        // [UseProjection] // We disabled projections because when requesting `id` all results had the same `id` and when also requesting `uuid`, the latter was always the empty UUID `000...`.
-        [UseFiltering]
-        [UseSorting]
-        public IQueryable<Data.CalorimetricData> GetAllCalorimetricData(
-            DateTime? timestamp,
-            [GraphQLType(typeof(LocaleType))] string? locale,
-            [ScopedService] Data.ApplicationDbContext context
-            )
-        {
-            // TODO Use `timestamp` and `locale`.
-            return context.CalorimetricData;
-        }
+        return GetAllDataAsync(
+            databaseContext => databaseContext.CalorimetricData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            cancellationToken
+        );
+    }
 
-        public Task<Data.CalorimetricData?> GetCalorimetricDataAsync(
-            Guid id,
-            DateTime? timestamp,
-            [GraphQLType(typeof(LocaleType))] string? locale,
-            CalorimetricDataByIdDataLoader byId,
-            CancellationToken cancellationToken
-            )
-        {
-            // TODO Use `timestamp` and `locale`.
-            return byId.LoadAsync(
-                id,
-                cancellationToken
-                );
-        }
+    [UsePaging]
+    [UseFiltering<CalorimetricDataFilterType>]
+    [UseSorting<CalorimetricDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<CalorimetricData>> GetAllPendingCalorimetricDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllPendingDataAsync(
+            databaseContext => databaseContext.CalorimetricData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
+    [UseFiltering<CalorimetricDataFilterType>]
+    public Task<bool> HasCalorimetricDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CancellationToken cancellationToken
+    )
+    {
+        return HasDataAsync(
+            databaseContext => databaseContext.CalorimetricData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            cancellationToken
+        );
+    }
+
+    public Task<CalorimetricData?> GetCalorimetricDataAsync(
+        Guid id,
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetDataAsync(
+            id,
+            locale,
+            databaseContext => databaseContext.CalorimetricData,
+            databaseContextFactory,
+            accessPolicyService,
+            databaseContext,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
     }
 }

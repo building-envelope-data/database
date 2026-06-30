@@ -1,25 +1,14 @@
-using System;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
-namespace Database.Data
+namespace Database.Data;
+
+[Owned]
+public sealed class NamedMethodArgument(
+    string name,
+    JsonElement value
+    )
 {
-    [Owned]
-    public sealed class NamedMethodArgument
-        : IDisposable
-    {
-        public string Name { get; private set; }
-        public JsonDocument Value { get; private set; }
-
-        public NamedMethodArgument(
-            string name,
-            JsonDocument value
-        )
-        {
-            Name = name;
-            Value = value;
-        }
-
-        public void Dispose() => Value.Dispose();
-    }
+    public string Name { get; private set; } = name;
+    public JsonElement Value { get; private set; } = value;
 }

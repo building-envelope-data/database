@@ -40,6 +40,10 @@ DROP TABLE database.optical_data;
 
 DROP TABLE database.photovoltaic_data;
 
+DROP EXTENSION IF EXISTS pgcrypto;
+
+DROP TYPE public.data_kind;
+
 DELETE FROM "__EFMigrationsHistory"
 WHERE "MigrationId" = '20211019125407_InitialCreate';
 

@@ -1,0 +1,28 @@
+using Database.Data.AccessPolicies;
+using Database.GraphQl.Entities;
+using HotChocolate.Data.Filters;
+
+namespace Database.GraphQl.AccessPolicies;
+
+public sealed class InstitutionAccessPolicyFilterType
+    : AuditableEntityFilterType<InstitutionAccessPolicy>
+{
+    protected override void Configure(
+        IFilterInputTypeDescriptor<InstitutionAccessPolicy> descriptor
+    )
+    {
+        descriptor.BindFieldsExplicitly();
+        descriptor.Name(nameof(InstitutionAccessPolicyFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
+        descriptor.Field(_ => _.InstitutionId);
+        descriptor.Field(_ => _.IsAlwaysAllowed);
+        descriptor.Field(_ => _.IsWithinAccessLimitInTimeSpan);
+        descriptor.Field(_ => _.IsWithinTimeSpan);
+        descriptor.Field(_ => _.DataAccessPolicy);
+        descriptor.Field(_ => _.UpperAccessLimitPerTimeDuration);
+        descriptor.Field(_ => _.AccessCountSinceStartTime);
+    }
+}

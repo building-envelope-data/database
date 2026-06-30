@@ -1,10 +1,18 @@
-// using HotChocolate.Types;
-// using HotChocolate;
+using System.Text.Json;
+using Database.Data;
 
-namespace Database.GraphQl
+namespace Database.GraphQl;
+
+public sealed record NamedMethodArgumentInput(
+    string Name,
+    JsonElement Value
+)
 {
-    public record NamedMethodArgumentInput(
-            string Name
-    // TODO [GraphQLType(nameof(NonNullType<AnyType>))] object Value
-    );
-}
+    public NamedMethodArgument ToDomainModel()
+    {
+        return new NamedMethodArgument(
+            Name,
+            Value
+        );
+    }
+};

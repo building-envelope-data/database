@@ -1,39 +1,49 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using GreenDonut;
-using HotChocolate;
+using GreenDonut.Data;
+using HotChocolate.CostAnalysis.Types;
+using Database.Data;
 
-namespace Database.GraphQl
+namespace Database.GraphQl;
+
+public abstract class Connection<TSubject, TAssociation, TEdge, TAssociationsByOneIdDataLoader>(
+    TSubject subject,
+    Func<TAssociation, TEdge> createEdge,
+    QueryContext<TAssociation> queryContext
+)
+    where TSubject : IEntity
+    where TAssociationsByOneIdDataLoader : IDataLoader<Guid, TAssociation[]>
 {
-    public abstract class Connection<TSubject, TAssociation, TAssociationsByAssociateIdDataLoader, TEdge>
-        where TSubject : Data.IEntity
-        where TAssociationsByAssociateIdDataLoader : IDataLoader<Guid, TAssociation[]>
+    protected TSubject Subject { get; } = subject;
+
+    [Cost(0)]
+    public async Task<int> GetTotalCountAsync(
+        TAssociationsByOneIdDataLoader dataLoader,
+        CancellationToken cancellationToken
+    )
     {
-        protected TSubject Subject { get; }
-        private readonly Func<TAssociation, TEdge> _createEdge;
+        return (
+            await dataLoader
+            .With(queryContext)
+            .LoadAsync(Subject.Id, cancellationToken)
+        )
+        ?.Length ?? 0;
+    }
 
-        protected Connection(
-            TSubject subject,
-            Func<TAssociation, TEdge> createEdge
-            )
+    [Cost(0)]
+    public async IAsyncEnumerable<TEdge> GetEdgesAsync(
+        TAssociationsByOneIdDataLoader dataLoader,
+        [EnumeratorCancellation] CancellationToken cancellationToken
+    )
+    {
+        foreach (var association in await dataLoader.With(queryContext).LoadAsync(Subject.Id, cancellationToken) ?? [])
         {
-            Subject = subject;
-            _createEdge = createEdge;
-        }
-
-        public async Task<IEnumerable<TEdge>> GetEdgesAsync(
-            [DataLoader] TAssociationsByAssociateIdDataLoader dataLoader,
-            CancellationToken cancellationToken
-            )
-        {
-            return (
-                await dataLoader.LoadAsync(Subject.Id, cancellationToken)
-                .ConfigureAwait(false)
-                )
-                .Select(_createEdge);
+            yield return createEdge(association);
         }
     }
 }

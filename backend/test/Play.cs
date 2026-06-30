@@ -1,15 +1,15 @@
 using System;
 using System.Threading.Tasks;
-using Xunit;
+using NUnit.Framework;
 
-namespace Test
+namespace Database.Tests;
+
+public sealed class Play
 {
-    public sealed class Play
+    [Test]
+    public async Task Do()
     {
-        [Fact]
-        public async Task Do()
-        {
-            Console.WriteLine("Do play!");
-        }
+        Console.WriteLine("Do play!");
+        await Task.FromResult(0);
     }
 }

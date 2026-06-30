@@ -1,30 +1,33 @@
-// using System;
+using System;
+using System.Text.Json;
+using Database.GraphQl.Scalars;
+using HotChocolate;
+using HotChocolate.Types;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
-// namespace Database.Data
-// {
-//     [Owned]
-//     public sealed class ResponseApproval
-//     : IApproval
-//     {
-//         public ResponseApproval(
-//             DateTime timestamp,
-//             string signature,
-//             string keyFingerprint,
-//             string query,
-//             string response
-//         )
-//         {
-//             Timestamp = timestamp;
-//             Signature = signature;
-//             KeyFingerprint = keyFingerprint;
-//             Query = query;
-//             Response = response;
-//         }
+namespace Database.Data;
 
-//         public DateTime Timestamp { get; private set; }
-//         public string Signature { get; private set; }
-//         public string KeyFingerprint { get; private set; }
-//         public string Query { get; private set; }
-//         public string Response { get; private set; }
-//     }
-// }
+[Owned]
+public sealed class ResponseApproval(
+    OffsetDateTime timestamp,
+    string signature,
+    string keyFingerprint,
+    string query,
+    JsonElement variables,
+    string message,
+    Guid approverId
+)
+    : IApproval
+{
+    public OffsetDateTime Timestamp { get; private set; } = timestamp;
+    public string Signature { get; private set; } = signature;
+    public string KeyFingerprint { get; private set; } = keyFingerprint;
+
+    [GraphQLType<NonNullType<GraphQlQueryType>>]
+    public string Query { get; private set; } = query;
+
+    public JsonElement Variables { get; private set; } = variables;
+    public string Message { get; private set; } = message;
+    public Guid ApproverId { get; private set; } = approverId;
+}

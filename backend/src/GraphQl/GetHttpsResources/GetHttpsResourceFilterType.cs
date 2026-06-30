@@ -1,24 +1,36 @@
+using Database.Data;
+using Database.GraphQl.Entities;
 using HotChocolate.Data.Filters;
 
-namespace Database.GraphQl.GetHttpsResources
+namespace Database.GraphQl.GetHttpsResources;
+
+public class GetHttpsResourceFilterType
+    : AuditableEntityFilterType<GetHttpsResource>
 {
-    public sealed class GetHttpsResourceFilterType
-      : FilterInputType<Data.GetHttpsResource>
+    protected override void Configure(
+        IFilterInputTypeDescriptor<GetHttpsResource> descriptor
+    )
     {
-        protected override void Configure(
-          IFilterInputTypeDescriptor<Data.GetHttpsResource> descriptor
-          )
-        {
-            descriptor.BindFieldsExplicitly();
-            descriptor.Field(x => x.Id);
-            descriptor.Field(x => x.Description);
-            descriptor.Field(x => x.HashValue);
-            descriptor.Field(x => x.DataFormatId);
-            descriptor.Field(x => x.AppliedConversionMethod);
-            descriptor.Field(x => x.ArchivedFilesMetaInformation);
-            descriptor.Field(x => x.DataId);
-            descriptor.Field(x => x.ParentId);
-            descriptor.Field(x => x.Parent);
-        }
+        base.Configure(descriptor);
+        descriptor.Name(nameof(GetHttpsResourceFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
+        descriptor.Field(_ => _.Description);
+        descriptor.Field(_ => _.HashValue);
+        descriptor.Field(_ => _.DataFormatId);
+        descriptor.Field(_ => _.AppliedConversionMethod);
+        descriptor.Field(_ => _.ArchivedFilesMetaInformation);
+        descriptor.Field(_ => _.Parent);
+        descriptor.Field(_ => _.DataId);
+        descriptor.Field(_ => _.DataKind);
+        // descriptor.Field(_ => _.Data);
+        descriptor.Field(_ => _.CalorimetricData);
+        descriptor.Field(_ => _.GeometricData);
+        descriptor.Field(_ => _.HygrothermalData);
+        descriptor.Field(_ => _.LifeCycleData);
+        descriptor.Field(_ => _.OpticalData);
+        descriptor.Field(_ => _.PhotovoltaicData);
     }
 }

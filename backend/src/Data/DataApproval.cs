@@ -1,34 +1,58 @@
 using System;
+using System.Text.Json;
+using Database.GraphQl.Scalars;
+using HotChocolate;
+using HotChocolate.Types;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
-namespace Database.Data
-{
-    [Owned]
-    public sealed class DataApproval
+namespace Database.Data;
+
+[Owned]
+public sealed class DataApproval(
+    OffsetDateTime timestamp,
+    string signature,
+    string keyFingerprint,
+    string query,
+    JsonElement variables,
+    string message,
+    Guid approverId,
+    Reference statement
+)
     : IApproval
-    {
-        public DateTime Timestamp { get; private set; }
-        public string Signature { get; private set; }
-        public string KeyFingerprint { get; private set; }
-        public string Query { get; private set; }
-        public string Response { get; private set; }
-        public Guid ApproverId { get; private set; }
-
-        public DataApproval(
-          DateTime timestamp,
-          string signature,
-          string keyFingerprint,
-          string query,
-          string response,
-          Guid approverId
+{
+    // Constructor for EF Core because navigation properties cannot be set using a constructor: https://learn.microsoft.com/en-us/ef/core/modeling/constructors#binding-to-mapped-properties
+    private DataApproval(
+        OffsetDateTime timestamp,
+        string signature,
+        string keyFingerprint,
+        string query,
+        JsonElement variables,
+        string message,
+        Guid approverId
+    )
+    : this(
+        timestamp,
+        signature,
+        keyFingerprint,
+        query,
+        variables,
+        message,
+        approverId,
+        null! // EF Core will set this owned navigation property after construction.
         )
-        {
-            Timestamp = timestamp;
-            Signature = signature;
-            KeyFingerprint = keyFingerprint;
-            Query = query;
-            Response = response;
-            ApproverId = approverId;
-        }
+    {
     }
+
+    public Guid ApproverId { get; private set; } = approverId;
+    public OffsetDateTime Timestamp { get; private set; } = timestamp;
+    public string Signature { get; private set; } = signature;
+    public string KeyFingerprint { get; private set; } = keyFingerprint;
+
+    [GraphQLType<NonNullType<GraphQlQueryType>>]
+    public string Query { get; private set; } = query;
+
+    public JsonElement Variables { get; private set; } = variables;
+    public string Message { get; private set; } = message;
+    public Reference Statement { get; private set; } = statement;
 }

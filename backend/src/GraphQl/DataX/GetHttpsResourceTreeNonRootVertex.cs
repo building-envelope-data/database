@@ -1,37 +1,28 @@
 using System;
+using Database.Data;
 using HotChocolate;
 using HotChocolate.Types;
 
-namespace Database.GraphQl.DataX
+namespace Database.GraphQl.DataX;
+
+public sealed class GetHttpsResourceTreeNonRootVertex(
+    GetHttpsResource value
+)
+: IGetHttpsResourceTreeVertex
 {
-    public sealed class GetHttpsResourceTreeNonRootVertex
-    : IGetHttpsResourceTreeVertex
-    {
-        [GraphQLType(typeof(NonNullType<IdType>))]
-        public string VertexId
-        {
-            get => Data.GetHttpsResource.ConstructVertexId(Value.Id);
-        }
+    [GraphQLType<NonNullType<IdType>>]
+    public string ParentId =>
+        GetHttpsResource.ConstructVertexId(
+            Value.ParentId
+            ?? throw new InvalidOperationException("Impossible! Each non-root vertex has a parent.")
+        );
 
-        public Data.GetHttpsResource Value { get; }
+    public ToTreeVertexAppliedConversionMethod AppliedConversionMethod { get; } =
+        value.AppliedConversionMethod ?? throw new InvalidOperationException("Each non-root vertex has an applied conversion method.");
 
-        [GraphQLType(typeof(NonNullType<IdType>))]
-        public string ParentId
-        {
-            get => Data.GetHttpsResource.ConstructVertexId(
-                Value.ParentId
-                ?? throw new InvalidOperationException("Impossible! Each non-root vertex has a parent.")
-                );
-        }
+    [GraphQLType<NonNullType<IdType>>]
+    public string VertexId =>
+        GetHttpsResource.ConstructVertexId(Value.Id);
 
-        public Data.ToTreeVertexAppliedConversionMethod AppliedConversionMethod { get; }
-
-        public GetHttpsResourceTreeNonRootVertex(
-            Data.GetHttpsResource value
-        )
-        {
-            Value = value;
-            AppliedConversionMethod = value.AppliedConversionMethod ?? throw new InvalidOperationException("Each non-root vertex has an applied conversion method.");
-        }
-    }
+    public GetHttpsResource Value { get; } = value;
 }

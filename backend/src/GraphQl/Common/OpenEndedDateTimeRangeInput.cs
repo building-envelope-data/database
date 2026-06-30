@@ -1,9 +1,8 @@
-using DateTime = System.DateTime;
+using NodaTime;
 
-namespace Database.GraphQl.Common
-{
-    public record OpenEndedDateTimeRangeInput(
-          DateTime? From,
-          DateTime? Until
-        );
-}
+namespace Database.GraphQl.Common;
+
+public sealed record OpenEndedDateTimeRangeInput(
+    OffsetDateTime? From,
+    OffsetDateTime? Until
+);

@@ -1,13 +1,14 @@
-using System;
-using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
-namespace Database.Enumerations
+namespace Database.Enumerations;
+
+[SuppressMessage("Naming", "CA1707")]
+public enum DataKind
 {
-    public enum DataKind
-    {
-        CALORIMETRIC_DATA,
-        HYGROTHERMAL_DATA,
-        OPTICAL_DATA,
-        PHOTOVOLTAIC_DATA
-    }
+    CALORIMETRIC_DATA,
+    GEOMETRIC_DATA,
+    HYGROTHERMAL_DATA,
+    LIFE_CYCLE_DATA,
+    OPTICAL_DATA,
+    PHOTOVOLTAIC_DATA
 }

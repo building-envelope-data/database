@@ -1,5 +1,6 @@
 import { Row, Col, Card, Typography } from "antd";
 import Layout from "../../components/Layout";
+import paths from "../../paths";
 
 function Page() {
   return (
@@ -7,19 +8,17 @@ function Page() {
       <Row justify="center">
         <Col>
           <Card title="Create Data">
-            <Typography.Paragraph style={{ maxWidth: 768 }}>
+            <Typography.Paragraph style={{ maxWidth: "75ch" }}>
               Create data by sending GraphQL mutations to the{" "}
-              <Typography.Link
-                href={`${process.env.NEXT_PUBLIC_DATABASE_URL}/graphql/`}
-              >
+              <Typography.Link href={paths.graphQl}>
                 GraphQL endpoint
               </Typography.Link>
               .
             </Typography.Paragraph>
             {/* <Form {...layout} form={form} name="basic">
               <Form.Item
-                label="Access Token"
-                name="accessToken"
+                label="..."
+                name="..."
                 rules={[
                   {
                     required: true,

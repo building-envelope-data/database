@@ -2,28 +2,21 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using GreenDonut;
-using HotChocolate;
 
-namespace Database.GraphQl
+namespace Database.GraphQl;
+
+public abstract class Edge<TNode, TNodeByIdDataLoader>(
+    Guid nodeId
+    )
+    where TNodeByIdDataLoader : IDataLoader<Guid, TNode?>
 {
-    public abstract class Edge<TNode, TNodeByIdDataLoader>
-        where TNodeByIdDataLoader : IDataLoader<Guid, TNode?>
+    private readonly Guid _nodeId = nodeId;
+
+    public async Task<TNode> GetNodeAsync(
+        TNodeByIdDataLoader byId,
+        CancellationToken cancellationToken
+    )
     {
-        private readonly Guid _nodeId;
-
-        protected Edge(
-            Guid nodeId
-            )
-        {
-            _nodeId = nodeId;
-        }
-
-        public async Task<TNode> GetNodeAsync(
-            [DataLoader] TNodeByIdDataLoader byId,
-            CancellationToken cancellationToken
-            )
-        {
-            return (await byId.LoadAsync(_nodeId, cancellationToken).ConfigureAwait(false))!;
-        }
+        return (await byId.LoadAsync(_nodeId, cancellationToken))!;
     }
 }

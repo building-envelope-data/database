@@ -1,28 +1,16 @@
+using Database.Data;
+using Database.GraphQl.DataX;
 using HotChocolate.Types;
 
-namespace Database.GraphQl.HygrothermalDataX
+namespace Database.GraphQl.HygrothermalDataX;
+
+public sealed class HygrothermalDataType
+    : DataTypeBase<HygrothermalData, IHygrothermalDataByIdDataLoader>
 {
-    public sealed class HygrothermalDataType
-      : EntityType<Data.HygrothermalData, HygrothermalDataByIdDataLoader>
+    protected override void Configure(
+        IObjectTypeDescriptor<HygrothermalData> descriptor
+    )
     {
-        protected override void Configure(
-            IObjectTypeDescriptor<Data.HygrothermalData> descriptor
-            )
-        {
-            base.Configure(descriptor);
-            descriptor
-                .Field(x => x.Locale)
-                .Type<NonNullType<LocaleType>>();
-            descriptor
-                .Field(x => x.Resources)
-                .ResolveWith<HygrothermalDataResolvers>(t => t.GetGetHttpsResources(default!, default!, default!));
-            descriptor
-                .Field("resourceTree")
-                .ResolveWith<HygrothermalDataResolvers>(t => t.GetGetHttpsResourceTree(default!));
-            descriptor
-                .Field("timestamp")
-                .Type<NonNullType<DateTimeType>>()
-                .ResolveWith<HygrothermalDataResolvers>(t => t.GetTimestamp());
-        }
+        base.Configure(descriptor);
     }
 }

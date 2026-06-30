@@ -1,7 +1,9 @@
-import { Form, Input, Button, Row, Col, Card, Typography, Upload } from "antd";
+import { Form, Input, Button, Card, Typography, Upload, Flex } from "antd";
 import { UploadOutlined } from "@ant-design/icons";
 import Layout from "../components/Layout";
-import { RcFile, UploadFile } from "antd/lib/upload/interface";
+import { RcFile } from "antd/lib/upload/interface";
+import paths from "../paths";
+import { uuidRegex } from "../lib/string";
 
 const layout = {
   labelCol: { span: 8 },
@@ -19,64 +21,75 @@ function Page() {
   const [form] = Form.useForm();
 
   const constructFileUploadAction = (_file: RcFile) =>
-    `/api/upload-file?getHttpsResourceUuid=${encodeURIComponent(
-      form.getFieldValue("getHttpsResourceUuid")
-    )}`;
-
-  const constructFileUploadData = (_file: UploadFile<any>) => ({
-    accessToken: form.getFieldValue("accessToken"),
-  });
+    paths.resource(form.getFieldValue("getHttpsResourceId"));
 
   return (
     <Layout>
-      <Row justify="center">
-        <Col>
-          <Card title="Upload File">
-            <Typography.Paragraph style={{ maxWidth: 768 }}>
-              For an existing GET HTTPS resource entry in the database, upload a
-              file with the content for that resource.
-            </Typography.Paragraph>
-            <Form {...layout} form={form} name="basic">
-              <Form.Item
-                label="Access Token"
-                name="accessToken"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
+      <Flex justify="center">
+        <Card title="Upload File">
+          <Typography.Paragraph style={{ maxWidth: "75ch" }}>
+            For an existing GET HTTPS resource entry in the database, upload a
+            file with the content for that resource.
+          </Typography.Paragraph>
+          <Form {...layout} form={form} name="basic">
+            <Form.Item
+              label="GET HTTPS Resource ID"
+              name="getHttpsResourceId"
+              rules={[
+                {
+                  required: true,
+                },
+                {
+                  whitespace: true,
+                },
+                {
+                  pattern: uuidRegex,
+                  message:
+                    "Invalid UUID format (e.g. 123e4567-e89b-12d3-a456-426614174000)",
+                },
+              ]}
+            >
+              <Input
+                style={{ fontFamily: "monospace" }}
+                maxLength={36}
+                placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              />
+            </Form.Item>
+            <Form.Item name="file" label="File">
+              <Upload
+                action={constructFileUploadAction}
+                withCredentials
+                listType="text"
               >
-                <Input />
-              </Form.Item>
-
-              <Form.Item
-                label="GET HTTPS Resource UUID"
-                name="getHttpsResourceUuid"
-                rules={[
-                  {
-                    required: true,
-                  },
-                ]}
-              >
-                <Input />
-              </Form.Item>
-
-              <Form.Item name="file" label="File">
-                <Upload
-                  action={constructFileUploadAction}
-                  data={constructFileUploadData}
-                  withCredentials
-                  listType="text"
-                >
-                  <Button icon={<UploadOutlined />}>
-                    Select File to Upload It
-                  </Button>
-                </Upload>
-              </Form.Item>
-            </Form>
-          </Card>
-        </Col>
-      </Row>
+                <Button icon={<UploadOutlined />}>
+                  Select File to Upload It
+                </Button>
+              </Upload>
+            </Form.Item>
+          </Form>
+          <Typography.Paragraph style={{ maxWidth: "75ch" }}>
+            The form sends a <code>multipart/form</code> post request to the{" "}
+            <abbr title="Representational State Transfer">RESTful</abbr>{" "}
+            endpoint{" "}
+            <code>
+              {paths.resource("xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx")}
+            </code>
+            . It is documented in the{" "}
+            <Typography.Link href={paths.openApiSchema}>
+              OpenAPI schema
+            </Typography.Link>{" "}
+            and can be played with on{" "}
+            <Typography.Link
+              href={paths.openApiPlayground(
+                "#tag/gethttpsresources/POST/api/resources/{id}",
+              )}
+            >
+              OpenAPI playground
+            </Typography.Link>
+            .
+          </Typography.Paragraph>
+        </Card>
+      </Flex>
     </Layout>
   );
 }

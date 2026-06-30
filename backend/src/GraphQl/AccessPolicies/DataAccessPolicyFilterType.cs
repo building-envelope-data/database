@@ -1,0 +1,37 @@
+using Database.Data.AccessPolicies;
+using Database.GraphQl.Entities;
+using HotChocolate.Data.Filters;
+
+namespace Database.GraphQl.AccessPolicies;
+
+public class DataAccessPolicyFilterType
+    : AuditableEntityFilterType<DataAccessPolicy>
+{
+    protected override void Configure(
+        IFilterInputTypeDescriptor<DataAccessPolicy> descriptor
+    )
+    {
+        descriptor.BindFieldsExplicitly();
+        descriptor.Name(nameof(DataAccessPolicyFilterType)[..^"FilterType".Length] + GraphQlConstants.FilterInputSuffix);
+        // TODO Remove Id, CreatedAt, and UpdatedAt once the base.Configure is respected.
+        descriptor.Field(_ => _.Id);
+        descriptor.Field(_ => _.CreatedAt);
+        descriptor.Field(_ => _.UpdatedAt);
+        descriptor.Field(_ => _.IsGlobal);
+        descriptor.Field(_ => _.IsNobodyAllowed);
+        descriptor.Field(_ => _.IsEveryoneAllowed);
+        descriptor.Field(_ => _.Combinator);
+        descriptor.Field(_ => _.UserAccessPolicies);
+        descriptor.Field(_ => _.InstitutionAccessPolicies);
+        descriptor.Field(_ => _.OpenIdConnectApplicationAccessPolicies);
+        descriptor.Field(_ => _.DataId);
+        descriptor.Field(_ => _.DataKind);
+        // descriptor.Field(_ => _.Data);
+        descriptor.Field(_ => _.CalorimetricData);
+        descriptor.Field(_ => _.GeometricData);
+        descriptor.Field(_ => _.HygrothermalData);
+        descriptor.Field(_ => _.LifeCycleData);
+        descriptor.Field(_ => _.OpticalData);
+        descriptor.Field(_ => _.PhotovoltaicData);
+    }
+}

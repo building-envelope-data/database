@@ -1,28 +1,20 @@
 using System;
-using Microsoft.EntityFrameworkCore;
 using Database.Enumerations;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
-namespace Database.Data
+namespace Database.Data;
+
+[Owned]
+public sealed class CrossDatabaseDataReference(
+    Guid dataId,
+    OffsetDateTime dataTimestamp,
+    DataKind dataKind,
+    Guid databaseId
+    )
 {
-    [Owned]
-    public sealed class CrossDatabaseDataReference
-    {
-        public Guid DataId { get; private set; }
-        public DateTime DataTimestamp { get; private set; }
-        public DataKind DataKind { get; private set; }
-        public Guid DatabaseId { get; private set; }
-
-        public CrossDatabaseDataReference(
-        Guid dataId,
-        DateTime dataTimestamp,
-        DataKind dataKind,
-        Guid databaseId
-        )
-        {
-            DataId = dataId;
-            DataTimestamp = dataTimestamp;
-            DataKind = dataKind;
-            DatabaseId = databaseId;
-        }
-    }
+    public Guid DataId { get; private set; } = dataId;
+    public OffsetDateTime DataTimestamp { get; private set; } = dataTimestamp;
+    public DataKind DataKind { get; private set; } = dataKind;
+    public Guid DatabaseId { get; private set; } = databaseId;
 }

@@ -1,0 +1,10 @@
+query Components($ids: [Uuid!]!) {
+  connection: components(where: { id: { in: $ids } }) {
+    edges {
+      node {
+        id: uuid
+        name
+      }
+    }
+  }
+}

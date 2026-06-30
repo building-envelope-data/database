@@ -5,13 +5,10 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "jsx": "preserve",
-    "lib": [
-      "dom",
-      "es2017"
-    ],
+    "jsx": "react-jsx",
+    "lib": ["dom", "es2017"],
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "noEmit": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
@@ -21,12 +18,14 @@
     "strict": true,
     "target": "esnext",
     "incremental": true
+    // "verbatimModuleSyntax": true
   },
-  "exclude": [
-    "node_modules"
-  ],
   "include": [
+    "typings/**/*.d.ts",
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
     "**/*.ts",
     "**/*.tsx"
-  ]
+  ],
+  "exclude": ["node_modules"]
 }

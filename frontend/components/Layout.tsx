@@ -2,7 +2,7 @@ import Head from "next/head";
 import { ReactNode, useEffect } from "react";
 import Footer from "./Footer";
 import NavBar from "./NavBar";
-import { Modal, Layout as AntLayout, Typography } from "antd";
+import { App, Layout as AntLayout, Typography, Flex, Divider } from "antd";
 import paths from "../paths";
 import { useCookies } from "react-cookie";
 
@@ -12,47 +12,57 @@ const navItems = [
     label: "Home",
   },
   {
-    path: paths.data,
-    label: "All Data",
+    path: paths.allCalorimetricData,
+    label: "Calorimetric",
   },
   {
-    path: paths.calorimetricData,
-    label: "Calorimetric Data",
+    path: paths.allGeometricData,
+    label: "Geometric",
   },
   {
-    path: paths.hygrothermalData,
-    label: "Hygrothermal Data",
+    path: paths.allHygrothermalData,
+    label: "Hygrothermal",
   },
   {
-    path: paths.opticalData,
-    label: "Optical Data",
+    path: paths.allLifeCycleData,
+    label: "Life-Cycle",
   },
   {
-    path: paths.photovoltaicData,
+    path: paths.allOpticalData,
+    label: "Optical",
+  },
+  {
+    path: paths.allPhotovoltaicData,
     label: "Photovoltaic Data",
+  },
+  {
+    path: paths.database,
+    label: "Database",
   },
 ];
 
 export type LayoutProps = {
+  pageTitles?: string[];
   children?: ReactNode;
 };
 
 const cookieConsentName = "consent";
 const cookieConsentValue = "yes";
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ pageTitles = [], children }: LayoutProps) {
   const appTitle = "TestLab Solar Façades";
 
   const [cookies, setCookie] = useCookies([cookieConsentName]);
   const shouldShowCookieConsent =
     cookies[cookieConsentName] != cookieConsentValue;
+  const { modal } = App.useApp();
 
   useEffect(() => {
     if (shouldShowCookieConsent) {
-      Modal.info({
+      modal.info({
         title: "Cookie Consent",
         content: (
-          <Typography.Paragraph>
+          <Typography.Paragraph style={{ maxWidth: "75ch" }}>
             This website employs cookies to make it work securely. As these
             cookies are essential you need to agree to their usage to use this
             website.
@@ -64,23 +74,41 @@ export default function Layout({ children }: LayoutProps) {
         },
       });
     }
-  }, [shouldShowCookieConsent, setCookie]);
+  }, [shouldShowCookieConsent, setCookie, modal]);
 
   return (
     <AntLayout>
       <Head>
-        <title>{appTitle}</title>
+        <title>{[...pageTitles, appTitle].join(" • ")}</title>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta charSet="utf-8" />
       </Head>
       <AntLayout.Header>
-        <NavBar items={navItems} />
+        <Flex justify="center">
+          <NavBar
+            items={navItems}
+            style={{
+              width: "100%",
+              maxWidth: 1024,
+            }}
+          />
+        </Flex>
       </AntLayout.Header>
-      <AntLayout.Content style={{ padding: "50px" }}>
-        {children}
+      <AntLayout.Content
+        style={{
+          paddingTop: "24px",
+          paddingBottom: "24px",
+        }}
+      >
+        <Flex justify="center">
+          <div style={{ width: "100%", maxWidth: 1024 }}>{children}</div>
+        </Flex>
       </AntLayout.Content>
       <AntLayout.Footer>
-        <Footer />
+        <Divider />
+        <Flex justify="center">
+          <Footer />
+        </Flex>
       </AntLayout.Footer>
     </AntLayout>
   );

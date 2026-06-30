@@ -1,0 +1,5 @@
+query PhotovoltaicData($id: Uuid!) {
+  photovoltaicData(id: $id) {
+    ...PhotovoltaicDataFields
+  }
+}

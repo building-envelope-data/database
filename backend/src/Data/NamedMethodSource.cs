@@ -1,29 +1,22 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace Database.Data
+namespace Database.Data;
+
+[Owned]
+public sealed class NamedMethodSource(
+    string name
+    )
 {
-    [Owned]
-    public sealed class NamedMethodSource
+    public NamedMethodSource(
+        string name,
+        CrossDatabaseDataReference value
+    )
+        : this(name)
     {
-        public string Name { get; private set; }
-        public CrossDatabaseDataReference Value { get; private set; } = default!;
-
-        public NamedMethodSource(
-            string name,
-            CrossDatabaseDataReference value
-        )
-        : this(name: name)
-        {
-            Name = name;
-            Value = value;
-        }
-
-        // `DbContext` needs this constructor without owned entities.
-        public NamedMethodSource(
-            string name
-        )
-        {
-            Name = name;
-        }
+        Name = name;
+        Value = value;
     }
+
+    public string Name { get; private set; } = name;
+    public CrossDatabaseDataReference Value { get; private set; } = default!;
 }

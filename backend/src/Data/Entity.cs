@@ -1,21 +1,25 @@
-using Guid = System.Guid;
-// using System.ComponentModel.DataAnnotations.Schema;
+using System;
 
-namespace Database.Data
+namespace Database.Data;
+
+public abstract class Entity
+    : IEntity
 {
-    public abstract class Entity
-      : IEntity
+    public Entity()
     {
-        public Guid Id { get; private set; }
-
-        // [NotMapped]
-        // public Guid Uuid { get => Id; }
-
-        public uint xmin { get; private set; } // https://www.npgsql.org/efcore/modeling/concurrency.html
-
-        protected Entity(
-            )
-        {
-        }
     }
+
+    public Entity(Guid id)
+    {
+        Id = id;
+    }
+
+    public Guid Id { get; init; }
+
+    // [NotMapped]
+    // public Guid Uuid { get => Id; }
+
+    // Configured via `IsRowVersion` in `ApplicationDbContext` instead of the annotation
+    // [Timestamp]
+    public uint Version { get; private set; } // https://www.npgsql.org/efcore/modeling/concurrency.html
 }

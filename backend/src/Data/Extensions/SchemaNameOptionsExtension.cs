@@ -3,57 +3,51 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 
 // Inspired by https://github.com/npgsql/efcore.pg/blob/main/src/EFCore.PG/Infrastructure/Internal/NpgsqlOptionsExtension.cs
-namespace Database.Data.Extensions
+namespace Database.Data.Extensions;
+
+public sealed class SchemaNameOptionsExtension(string schemaName)
+        : IDbContextOptionsExtension
 {
-    public sealed class SchemaNameOptionsExtension
-      : IDbContextOptionsExtension
+    public string SchemaName { get; } = schemaName;
+
+    public DbContextOptionsExtensionInfo Info
+        => new SchemaNameExtensionInfo(this);
+
+    public void ApplyServices(IServiceCollection services)
     {
-        public DbContextOptionsExtensionInfo Info
-          => new SchemaNameExtensionInfo(this);
+    }
 
-        public string SchemaName { get; }
+    public void Validate(IDbContextOptions options)
+    {
+    }
 
-        public SchemaNameOptionsExtension(string schemaName)
+    public sealed class SchemaNameExtensionInfo(SchemaNameOptionsExtension extension)
+                : DbContextOptionsExtensionInfo(extension)
+    {
+        public override bool IsDatabaseProvider
+            => false;
+
+        public override string LogFragment
+            => $"{nameof(Extension.SchemaName)}={Extension.SchemaName}";
+
+        public new SchemaNameOptionsExtension Extension => (SchemaNameOptionsExtension)base.Extension;
+
+        public override bool ShouldUseSameServiceProvider(DbContextOptionsExtensionInfo other)
         {
-            SchemaName = schemaName;
+            return true;
         }
 
-        public void ApplyServices(IServiceCollection services)
+        public override int GetServiceProviderHashCode()
         {
+            return 0;
         }
 
-        public void Validate(IDbContextOptions options)
+        public override void PopulateDebugInfo(
+            IDictionary<string, string> debugInfo
+        )
         {
-        }
-
-        public sealed class SchemaNameExtensionInfo
-          : DbContextOptionsExtensionInfo
-        {
-            public override bool IsDatabaseProvider
-              => false;
-
-            public override string LogFragment
-              => $"{nameof(Extension.SchemaName)}={Extension.SchemaName}";
-
-            public new SchemaNameOptionsExtension Extension => (SchemaNameOptionsExtension)base.Extension;
-
-            public SchemaNameExtensionInfo(SchemaNameOptionsExtension extension)
-              : base(extension)
-            {
-            }
-
-            public override long GetServiceProviderHashCode()
-            {
-                return 0;
-            }
-
-            public override void PopulateDebugInfo(
-                IDictionary<string, string> debugInfo
-                )
-            {
-                debugInfo[$"Infrastructure.Data:${nameof(SchemaNameOptionsExtension.SchemaName)}"]
-                  = Extension.SchemaName;
-            }
+            debugInfo[$"Database.Data.Extensions:${nameof(SchemaName)}"]
+                = Extension.SchemaName;
         }
     }
 }

@@ -1,0 +1,22 @@
+query Data($databaseId: Uuid!, $dataId: Uuid!, $dataKind: DataKind!) {
+  database(id: $databaseId) {
+    id: uuid
+    data(id: $dataId, kind: $dataKind) {
+      id: uuid
+      kind
+      resourceTree {
+        root {
+          vertexId
+          value {
+            hashValue
+            locator
+            dataFormat {
+              id: uuid
+              mediaType
+            }
+          }
+        }
+      }
+    }
+  }
+}

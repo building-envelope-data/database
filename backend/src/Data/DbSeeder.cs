@@ -1,21 +1,32 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Database.Data
+namespace Database.Data;
+
+public static partial class Log
 {
-    public sealed class DbSeeder
+    [LoggerMessage(
+        Level = LogLevel.Debug,
+        Message = "Seeding the database")]
+    public static partial void SeedingDatabase(
+        this ILogger<DbSeeder> logger
+    );
+}
+
+public sealed class DbSeeder
+{
+    public static async Task DoAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken
+    )
     {
-        public static async Task DoAsync(
-            IServiceProvider services
-            )
-        {
-            var logger = services.GetRequiredService<ILogger<DbSeeder>>();
-            logger.LogDebug("Seeding the database");
-            // var environment = services.GetRequiredService<IWebHostEnvironment>();
-            // var appSettings = services.GetRequiredService<AppSettings>();
-        }
+        var logger = services.GetRequiredService<ILogger<DbSeeder>>();
+        logger.SeedingDatabase();
+        // var environment = services.GetRequiredService<IWebHostEnvironment>();
+        // var appSettings = services.GetRequiredService<AppSettings>();
+        await Task.FromResult(0);
     }
 }

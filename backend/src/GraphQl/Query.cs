@@ -1,6 +1,5 @@
-namespace Database.GraphQl
+namespace Database.GraphQl;
+
+public sealed class Query
 {
-    public sealed class Query
-    {
-    }
 }

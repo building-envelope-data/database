@@ -1,141 +1,329 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Database.Extensions;
+using Database.Utilities;
+using EntityFrameworkCore.Projectables;
 
-namespace Database.Data
+namespace Database.Data;
+
+public sealed class GetHttpsResource
+: AuditableEntity
 {
-    public sealed class GetHttpsResource
-    : Data.Entity
+    public const string FilesDirectoryPath = "./files/";
+    public const string TableName = "get_https_resource";
+
+    public const string DataIdsMustMatchTriggerName = $"{TableName}_data_ids_must_match";
+    public const string DataIdCannotChangeTriggerName = $"{TableName}_data_id_cannot_change";
+    public const string RootCanOnlyBeDeletedAlongsideItsDataTriggerName = $"resource_root_can_only_deleted_alongside_its_data";
+    public static readonly ImmutableArray<string> TriggerNames = [
+        DataIdsMustMatchTriggerName,
+        DataIdCannotChangeTriggerName,
+        RootCanOnlyBeDeletedAlongsideItsDataTriggerName
+    ];
+
+    public static readonly ImmutableArray<(string Field, string Table)> DataIdFieldAndDataTableNames = [
+        (nameof(CalorimetricDataId), CalorimetricData.TableName),
+        (nameof(GeometricDataId), GeometricData.TableName),
+        (nameof(HygrothermalDataId), HygrothermalData.TableName),
+        (nameof(LifeCycleDataId), LifeCycleData.TableName),
+        (nameof(OpticalDataId), OpticalData.TableName),
+        (nameof(PhotovoltaicDataId), PhotovoltaicData.TableName)
+    ];
+
+    // Constructor for EF Core because navigation properties cannot be set using a constructor: https://learn.microsoft.com/en-us/ef/core/modeling/constructors#binding-to-mapped-properties
+    public GetHttpsResource(
+        string? description,
+        string hashValue,
+        Guid dataFormatId,
+        string? fileExtension
+    )
     {
-        public static string ConstructVertexId(Guid id)
-        {
-            return id.ToString("D").Base64Encode();
-        }
+        Description = description;
+        HashValue = hashValue;
+        DataFormatId = dataFormatId;
+        FileExtension = fileExtension;
+    }
 
-        public string Description { get; private set; }
-        public string HashValue { get; private set; }
-        public Guid DataFormatId { get; private set; }
-        public ICollection<FileMetaInformation> ArchivedFilesMetaInformation { get; private set; } = new List<FileMetaInformation>();
-
-        // TODO Make sure that at least one ID is always present. In that case `Guid.Empty` should never be used!
-        [NotMapped]
-        public Guid DataId { get => CalorimetricDataId ?? HygrothermalDataId ?? OpticalDataId ?? PhotovoltaicDataId ?? Guid.Empty; }
-        [NotMapped]
-        public IData? Data { get => CalorimetricData ?? HygrothermalData ?? OpticalData ?? PhotovoltaicData as IData; }
-
-        public Guid? CalorimetricDataId { get; private set; }
-        [InverseProperty(nameof(Database.Data.CalorimetricData.Resources))]
-        public CalorimetricData? CalorimetricData { get; set; }
-
-        public Guid? HygrothermalDataId { get; private set; }
-
-        [InverseProperty(nameof(Database.Data.HygrothermalData.Resources))]
-        public HygrothermalData? HygrothermalData { get; set; }
-
-        public Guid? OpticalDataId { get; private set; }
-
-        [InverseProperty(nameof(Database.Data.OpticalData.Resources))]
-        public OpticalData? OpticalData { get; set; }
-
-        public Guid? PhotovoltaicDataId { get; private set; }
-
-        [InverseProperty(nameof(Database.Data.PhotovoltaicData.Resources))]
-        public PhotovoltaicData? PhotovoltaicData { get; set; }
-
-
-        public Guid? ParentId { get; private set; }
-        // TODO Require the conversion method to be given whenever there is a parent. In other words, either both are `null` or both are non-`null`.
-        public ToTreeVertexAppliedConversionMethod? AppliedConversionMethod { get; private set; }
-
-        // TODO The parent's `Data` must be the same as this resource's `Data`.
-        [InverseProperty(nameof(Children))]
-        public GetHttpsResource? Parent { get; set; }
-
-        [InverseProperty(nameof(Parent))]
-        public ICollection<GetHttpsResource> Children { get; } = new List<GetHttpsResource>();
-
-        public GetHttpsResource(
-          string description,
-          string hashValue,
-          Guid dataFormatId,
-          Guid? calorimetricDataId,
-          Guid? hygrothermalDataId,
-          Guid? opticalDataId,
-          Guid? photovoltaicDataId,
-          Guid? parentId,
-          ICollection<FileMetaInformation> archivedFilesMetaInformation,
-          ToTreeVertexAppliedConversionMethod? appliedConversionMethod
-        )
+    /// <summary>
+    /// Construct a root resource.
+    /// </summary>
+    public GetHttpsResource(
+        string? description,
+        string hashValue,
+        Guid dataFormatId,
+        string? fileExtension,
+        ICollection<FileMetaInformation> archivedFilesMetaInformation
+    )
         : this(
-            description: description,
-            hashValue: hashValue,
-            dataFormatId: dataFormatId,
-            parentId: parentId,
-            archivedFilesMetaInformation: archivedFilesMetaInformation,
-            appliedConversionMethod: appliedConversionMethod
+            description,
+            hashValue,
+            dataFormatId,
+            fileExtension
         )
-        {
-            CalorimetricDataId = calorimetricDataId;
-            HygrothermalDataId = hygrothermalDataId;
-            OpticalDataId = opticalDataId;
-            PhotovoltaicDataId = photovoltaicDataId;
-        }
+    {
+        ParentId = null;
+        ArchivedFilesMetaInformation = archivedFilesMetaInformation;
+        AppliedConversionMethod = null;
+        // The data ID is set by EF Core.
+    }
 
-        public GetHttpsResource(
-          string description,
-          string hashValue,
-          Guid dataFormatId,
-          Guid? parentId,
-          ICollection<FileMetaInformation> archivedFilesMetaInformation,
-          ToTreeVertexAppliedConversionMethod? appliedConversionMethod
-        )
+    /// <summary>
+    /// Construct a child resource.
+    /// </summary>
+    public GetHttpsResource(
+        string? description,
+        string hashValue,
+        Guid dataFormatId,
+        string? fileExtension,
+        Guid? calorimetricDataId,
+        Guid? geometricDataId,
+        Guid? hygrothermalDataId,
+        Guid? lifeCycleDataId,
+        Guid? opticalDataId,
+        Guid? photovoltaicDataId,
+        Guid parentId,
+        ICollection<FileMetaInformation> archivedFilesMetaInformation,
+        ToTreeVertexAppliedConversionMethod appliedConversionMethod
+    )
         : this(
-            description: description,
-            hashValue: hashValue,
-            dataFormatId: dataFormatId,
-            parentId: parentId
+            description,
+            hashValue,
+            dataFormatId,
+            fileExtension
         )
-        {
-            ArchivedFilesMetaInformation = archivedFilesMetaInformation;
-            AppliedConversionMethod = appliedConversionMethod;
-        }
+    {
+        CalorimetricDataId = calorimetricDataId;
+        GeometricDataId = geometricDataId;
+        HygrothermalDataId = hygrothermalDataId;
+        LifeCycleDataId = lifeCycleDataId;
+        OpticalDataId = opticalDataId;
+        PhotovoltaicDataId = photovoltaicDataId;
+        ParentId = parentId;
+        ArchivedFilesMetaInformation = archivedFilesMetaInformation;
+        AppliedConversionMethod = appliedConversionMethod;
+        AssertThatExactlyOneDataIdIsNonNull();
+    }
 
-        // `DbContext` needs this constructor without owned entities.
-        public GetHttpsResource(
-          string description,
-          string hashValue,
-          Guid dataFormatId,
-          Guid? calorimetricDataId,
-          Guid? hygrothermalDataId,
-          Guid? opticalDataId,
-          Guid? photovoltaicDataId,
-          Guid? parentId
-        )
-        : this(
-            description: description,
-            hashValue: hashValue,
-            dataFormatId: dataFormatId,
-            parentId: parentId
-        )
-        {
-            CalorimetricDataId = calorimetricDataId;
-            HygrothermalDataId = hygrothermalDataId;
-            OpticalDataId = opticalDataId;
-            PhotovoltaicDataId = photovoltaicDataId;
+    private void AssertThatExactlyOneDataIdIsNonNull()
+    {
+        var nonNullDataIdCount = new Guid?[] {
+            CalorimetricDataId,
+            GeometricDataId,
+            HygrothermalDataId,
+            LifeCycleDataId,
+            OpticalDataId,
+            PhotovoltaicDataId
         }
+        .NotNull()
+        .Count();
+        if (nonNullDataIdCount is 0)
+        {
+            throw new InvalidOperationException("All data IDs are null.");
+        }
+        if (nonNullDataIdCount >= 2)
+        {
+            throw new InvalidOperationException("There is more than 1 non-null data ID.");
+        }
+    }
 
-        public GetHttpsResource(
-          string description,
-          string hashValue,
-          Guid dataFormatId,
-          Guid? parentId
-        )
+    public string? Description { get; private set; }
+    public string HashValue { get; private set; }
+    public Guid DataFormatId { get; private set; }
+    public string? FileExtension { get; private set; }
+
+    public string FileName =>
+        Id.ToString("D")
+        + (FileExtension is null ? "" : $".{FileExtension}");
+
+    public string FilePath =>
+        Path.Combine(FilesDirectoryPath, FileName);
+
+    public string AbsoluteFilePath =>
+        Path.GetFullPath(FilePath);
+
+    public ICollection<FileMetaInformation> ArchivedFilesMetaInformation { get; private set; } = [];
+
+    // Note that at least one data ID is always present. So `Guid.Empty` will never be used.
+    [Projectable]
+    public Guid DataId => CalorimetricDataId ?? GeometricDataId ?? HygrothermalDataId ?? LifeCycleDataId ?? OpticalDataId ?? PhotovoltaicDataId ?? Guid.Empty;
+
+    public IData? Data => CalorimetricData ?? GeometricData ?? HygrothermalData ?? LifeCycleData ?? OpticalData ?? PhotovoltaicData as IData;
+
+    [Projectable]
+    public Database.Enumerations.DataKind DataKind =>
+        CalorimetricDataId != null ? Database.Enumerations.DataKind.CALORIMETRIC_DATA
+        : GeometricDataId != null ? Database.Enumerations.DataKind.GEOMETRIC_DATA
+        : HygrothermalDataId != null ? Database.Enumerations.DataKind.HYGROTHERMAL_DATA
+        : LifeCycleDataId != null ? Database.Enumerations.DataKind.LIFE_CYCLE_DATA
+        : OpticalDataId != null ? Database.Enumerations.DataKind.OPTICAL_DATA
+        : PhotovoltaicDataId != null ? Database.Enumerations.DataKind.PHOTOVOLTAIC_DATA
+        : default; // the default case does not happen if the above cases are exhaustive
+
+    [Projectable]
+    public Guid? GetDataId(Database.Enumerations.DataKind dataKind) =>
+        dataKind switch
         {
-            Description = description;
-            HashValue = hashValue;
-            DataFormatId = dataFormatId;
-            ParentId = parentId;
+            Database.Enumerations.DataKind.CALORIMETRIC_DATA => CalorimetricDataId,
+            Database.Enumerations.DataKind.GEOMETRIC_DATA => GeometricDataId,
+            Database.Enumerations.DataKind.HYGROTHERMAL_DATA => HygrothermalDataId,
+            Database.Enumerations.DataKind.LIFE_CYCLE_DATA => LifeCycleDataId,
+            Database.Enumerations.DataKind.OPTICAL_DATA => OpticalDataId,
+            Database.Enumerations.DataKind.PHOTOVOLTAIC_DATA => PhotovoltaicDataId,
+            _ => null, // throw new ArgumentOutOfRangeException(nameof(dataKind), $"Unsupported data kind {dataKind}"),
+        };
+
+    [Projectable]
+    public IData? GetData(Database.Enumerations.DataKind dataKind) =>
+        dataKind switch
+        {
+            Database.Enumerations.DataKind.CALORIMETRIC_DATA => CalorimetricData,
+            Database.Enumerations.DataKind.GEOMETRIC_DATA => GeometricData,
+            Database.Enumerations.DataKind.HYGROTHERMAL_DATA => HygrothermalData,
+            Database.Enumerations.DataKind.LIFE_CYCLE_DATA => LifeCycleData,
+            Database.Enumerations.DataKind.OPTICAL_DATA => OpticalData,
+            Database.Enumerations.DataKind.PHOTOVOLTAIC_DATA => PhotovoltaicData,
+            _ => null, //throw new ArgumentOutOfRangeException(nameof(dataKind), $"Unsupported data kind {dataKind}"),
+        };
+
+    public Guid? CalorimetricDataId { get; private set; }
+
+    [InverseProperty(nameof(CalorimetricData.Resources))]
+    public CalorimetricData? CalorimetricData { get; set; }
+
+    public Guid? GeometricDataId { get; private set; }
+
+    [InverseProperty(nameof(GeometricData.Resources))]
+    public GeometricData? GeometricData { get; set; }
+
+    public Guid? HygrothermalDataId { get; private set; }
+
+    [InverseProperty(nameof(HygrothermalData.Resources))]
+    public HygrothermalData? HygrothermalData { get; set; }
+
+    public Guid? LifeCycleDataId { get; private set; }
+
+    [InverseProperty(nameof(LifeCycleData.Resources))]
+    public LifeCycleData? LifeCycleData { get; set; }
+
+    public Guid? OpticalDataId { get; private set; }
+
+    [InverseProperty(nameof(OpticalData.Resources))]
+    public OpticalData? OpticalData { get; set; }
+
+    public Guid? PhotovoltaicDataId { get; private set; }
+
+    [InverseProperty(nameof(PhotovoltaicData.Resources))]
+    public PhotovoltaicData? PhotovoltaicData { get; set; }
+
+    public Guid? ParentId { get; private set; }
+
+    public ToTreeVertexAppliedConversionMethod? AppliedConversionMethod { get; private set; }
+
+    // TODO The parent's `Data` must be the same as this resource's `Data`.
+    [InverseProperty(nameof(Children))] public GetHttpsResource? Parent { get; set; }
+
+    [InverseProperty(nameof(Parent))]
+    public ICollection<GetHttpsResource> Children { get; } = [];
+
+    public void UpdateFileExtension(string? fileExtension)
+    {
+        var oldFilePath = FilePath;
+        FileExtension = fileExtension;
+        File.Move(
+            oldFilePath,
+            FilePath,
+            overwrite: true
+        );
+    }
+
+    public bool DoesFileExist()
+    {
+        return File.Exists(FilePath);
+    }
+
+    public void DeleteFile()
+    {
+        File.Delete(FilePath);
+    }
+
+    public async Task RecomputeHashValue(CancellationToken cancellationToken)
+    {
+        HashValue = await Sha256FileHasher.ComputeForFile(FilePath, cancellationToken);
+    }
+
+    public bool IsRoot()
+    {
+        return ParentId is null;
+    }
+
+    public bool IsChild()
+    {
+        return ParentId is not null;
+    }
+
+    public static string ConstructVertexId(Guid id)
+    {
+        return id.ToString("D").Base64Encode();
+    }
+
+    internal void UpdateRoot(
+        string description,
+        Guid dataFormatId,
+        string? fileExtension,
+        ICollection<FileMetaInformation> archivedFilesMetaInformation
+    )
+    {
+        if (ParentId is not null)
+        {
+            throw new InvalidOperationException($"This resource with ID {Id} is not a root but the child of {ParentId}.");
         }
+        Description = description;
+        DataFormatId = dataFormatId;
+        if (fileExtension != FileExtension)
+        {
+            UpdateFileExtension(fileExtension);
+        }
+        ArchivedFilesMetaInformation = archivedFilesMetaInformation;
+    }
+
+    internal void UpdateChild(
+        string description,
+        Guid dataFormatId,
+        string? fileExtension,
+        ICollection<FileMetaInformation> archivedFilesMetaInformation,
+        ToTreeVertexAppliedConversionMethod appliedConversionMethod
+    )
+    {
+        if (ParentId is null)
+        {
+            throw new InvalidOperationException($"This resource with ID {Id} is not a child.");
+        }
+        Description = description;
+        DataFormatId = dataFormatId;
+        if (fileExtension != FileExtension)
+        {
+            UpdateFileExtension(fileExtension);
+        }
+        ArchivedFilesMetaInformation = archivedFilesMetaInformation;
+        AppliedConversionMethod = appliedConversionMethod;
+    }
+
+    internal void SetParent(
+        Guid parentId,
+        ToTreeVertexAppliedConversionMethod appliedConversionMethod
+    )
+    {
+        if (ParentId is null)
+        {
+            throw new InvalidOperationException($"This resource with ID {Id} is not a child.");
+        }
+        ParentId = parentId;
+        AppliedConversionMethod = appliedConversionMethod;
     }
 }

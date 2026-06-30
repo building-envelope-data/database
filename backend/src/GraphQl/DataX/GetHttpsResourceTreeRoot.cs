@@ -1,23 +1,14 @@
+using Database.Data;
 using HotChocolate;
 using HotChocolate.Types;
 
-namespace Database.GraphQl.DataX
+namespace Database.GraphQl.DataX;
+
+public sealed class GetHttpsResourceTreeRoot(
+    GetHttpsResource value
+    ) : IGetHttpsResourceTreeVertex
 {
-    public sealed class GetHttpsResourceTreeRoot : IGetHttpsResourceTreeVertex
-    {
-        [GraphQLType(typeof(NonNullType<IdType>))]
-        public string VertexId
-        {
-            get => Data.GetHttpsResource.ConstructVertexId(Value.Id);
-        }
+    [GraphQLType<NonNullType<IdType>>] public string VertexId => GetHttpsResource.ConstructVertexId(Value.Id);
 
-        public Data.GetHttpsResource Value { get; }
-
-        public GetHttpsResourceTreeRoot(
-            Data.GetHttpsResource value
-        )
-        {
-            Value = value;
-        }
-    }
+    public GetHttpsResource Value { get; } = value;
 }

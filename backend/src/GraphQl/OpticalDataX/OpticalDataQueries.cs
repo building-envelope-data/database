@@ -1,45 +1,107 @@
 using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Database.Authorization;
+using Database.Data;
+using Database.GraphQl.DataX;
+using Database.GraphQl.Scalars;
+using Database.Services;
 using HotChocolate;
 using HotChocolate.Data;
+using HotChocolate.Resolvers;
 using HotChocolate.Types;
-using Guid = System.Guid;
+using Microsoft.EntityFrameworkCore;
 
-namespace Database.GraphQl.OpticalDataX
+namespace Database.GraphQl.OpticalDataX;
+
+[ExtendObjectType(nameof(Query))]
+public sealed class OpticalDataQueries
+: DataQueriesBase<OpticalData>
 {
-    [ExtendObjectType(nameof(Query))]
-    public sealed class OpticalDataQueries
+    [UsePaging]
+    [UseFiltering<OpticalDataFilterType>]
+    [UseSorting<OpticalDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<OpticalData>> GetAllOpticalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CancellationToken cancellationToken
+    )
     {
-        [UseDbContext(typeof(Data.ApplicationDbContext))]
-        [UsePaging]
-        // [UseProjection] // We disabled projections because when requesting `id` all results had the same `id` and when also requesting `uuid`, the latter was always the empty UUID `000...`.
-        [UseFiltering]
-        [UseSorting]
-        public IQueryable<Data.OpticalData> GetAllOpticalData(
-            DateTime? timestamp,
-            [GraphQLType(typeof(LocaleType))] string? locale,
-            [ScopedService] Data.ApplicationDbContext context
-            )
-        {
-            // TODO Use `timestamp` and `locale`.
-            return context.OpticalData;
-        }
+        return GetAllDataAsync(
+            databaseContext => databaseContext.OpticalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            cancellationToken
+        );
+    }
 
-        public Task<Data.OpticalData?> GetOpticalDataAsync(
-            Guid id,
-            DateTime? timestamp,
-            [GraphQLType(typeof(LocaleType))] string? locale,
-            OpticalDataByIdDataLoader byId,
-            CancellationToken cancellationToken
-            )
-        {
-            // TODO Use `timestamp` and `locale`.
-            return byId.LoadAsync(
-                id,
-                cancellationToken
-                );
-        }
+    [UsePaging]
+    [UseFiltering<OpticalDataFilterType>]
+    [UseSorting<OpticalDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<OpticalData>> GetAllPendingOpticalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllPendingDataAsync(
+            databaseContext => databaseContext.OpticalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
+    [UseFiltering<OpticalDataFilterType>]
+    public Task<bool> HasOpticalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CancellationToken cancellationToken
+    )
+    {
+        return HasDataAsync(
+            databaseContext => databaseContext.OpticalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            cancellationToken
+        );
+    }
+
+    public Task<OpticalData?> GetOpticalDataAsync(
+        Guid id,
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        ApplicationDbContext databaseContext,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetDataAsync(
+            id,
+            locale,
+            databaseContext => databaseContext.OpticalData,
+            databaseContextFactory,
+            accessPolicyService,
+            databaseContext,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
     }
 }
