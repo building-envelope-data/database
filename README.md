@@ -431,10 +431,10 @@ and the pages following it.
 1. Enter a shell on the production machine using `ssh`.
 1. Navigate into `/app/production` by running `cd /app/production`.
 1. Back up the production database by running
-   `./database.mk backup DIR=/app/production/backup`.
+   `./database.mk backup DIR=/app/production/backup CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage`.
 1. Change to the staging environment by running `cd /app/staging`.
 1. Restore the staging database from the production backup by running
-   `./database.mk restore DIR=/app/production/backup`.
+   `./database.mk restore DIR=/app/production/backup CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage`.
 1. Adapt the environment file `./.env` if necessary by comparing it with the
    `./.env.staging.sample` file of the release to be deployed.
 1. Deploy the new release in the staging environment by running
@@ -502,7 +502,7 @@ database was not shut down cleanly. One solution is to restore the database
 from a backup by running
 
 ```
-./database.mk restore DIR=/app/data/backups/20XX-XX-XX_XX_XX_XX/
+./database.mk restore DIR=/app/data/backups/20XX-XX-XX_XX_XX_XX/ CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage
 ```
 
 where the `X`s need to be replaced by proper values. Another solution is to
@@ -537,10 +537,10 @@ under /app/staging before doing it in `production` under /app/production.
    `ssh -CvX -A cloud@IpAdressOfCloudServer`.
 1. Navigate to the production environment by running `cd /app/production`.
 1. Make a database backup by running `DATE=$(date +"%Y-%m-%d_%H_%M_%S")` and
-   `./database.mk backup DIR=/app/data/backups/${DATE}`
+   `./database.mk backup DIR=/app/data/backups/${DATE} CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage`
 1. Navigate to the staging environment by running `cd /app/staging`.
 1. Load the backup into the staging database by running
-   `./database.mk restore DIR=/app/data/backups/${DATE}`.
+   `./database.mk restore DIR=/app/data/backups/${DATE} CONTENT_ADDRESSABLE_STORAGE=/app/data/backups/.content-addressable-storage`.
 1. Drop into `psql` by running `./database.mk psql`.
 1. List all tables in the schema `database` by running `\dt database.*`.
 1. List all optical data records by running `select * from database.optical_data;` and remember for example one identifier of a record
