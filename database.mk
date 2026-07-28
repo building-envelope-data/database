@@ -142,7 +142,7 @@ backup : ## Backup database and related data to directory with absolute path `${
 				else \
 						echo "File already exists in content-addressable storage: $${content_addressed_file_path}" ; \
 				fi ; \
-				ln --symbolic "$${content_addressed_file_path}" /backup/files/"$${original_file_name}" ; \
+				ln --symbolic --force "$${content_addressed_file_path}" /backup/files/"$${original_file_name}" ; \
 			done \
 		'
 .PHONY : backup
