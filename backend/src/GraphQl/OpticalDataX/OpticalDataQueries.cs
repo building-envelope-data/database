@@ -62,6 +62,29 @@ public sealed class OpticalDataQueries
         );
     }
 
+    [UsePaging]
+    [UseFiltering<OpticalDataFilterType>]
+    [UseSorting<OpticalDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<OpticalData>> GetAllRetractedOpticalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllRetractedDataAsync(
+            databaseContext => databaseContext.OpticalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
     [UseFiltering<OpticalDataFilterType>]
     public Task<bool> HasOpticalDataAsync(
         [GraphQLType<LocaleType>] string? locale,

@@ -62,6 +62,29 @@ public sealed class CalorimetricDataQueries
         );
     }
 
+    [UsePaging]
+    [UseFiltering<CalorimetricDataFilterType>]
+    [UseSorting<CalorimetricDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<CalorimetricData>> GetAllRetractedCalorimetricDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllRetractedDataAsync(
+            databaseContext => databaseContext.CalorimetricData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
     [UseFiltering<CalorimetricDataFilterType>]
     public Task<bool> HasCalorimetricDataAsync(
         [GraphQLType<LocaleType>] string? locale,

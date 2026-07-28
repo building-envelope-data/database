@@ -62,6 +62,29 @@ public sealed class PhotovoltaicDataQueries
         );
     }
 
+    [UsePaging]
+    [UseFiltering<PhotovoltaicDataFilterType>]
+    [UseSorting<PhotovoltaicDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<PhotovoltaicData>> GetAllRetractedPhotovoltaicDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllRetractedDataAsync(
+            databaseContext => databaseContext.PhotovoltaicData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
     [UseFiltering<PhotovoltaicDataFilterType>]
     public Task<bool> HasPhotovoltaicDataAsync(
         [GraphQLType<LocaleType>] string? locale,

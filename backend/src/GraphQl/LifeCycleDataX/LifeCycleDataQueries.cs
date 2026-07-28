@@ -62,6 +62,29 @@ public sealed class LifeCycleDataQueries
         );
     }
 
+    [UsePaging]
+    [UseFiltering<LifeCycleDataFilterType>]
+    [UseSorting<LifeCycleDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<LifeCycleData>> GetAllRetractedLifeCycleDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllRetractedDataAsync(
+            databaseContext => databaseContext.LifeCycleData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
     [UseFiltering<LifeCycleDataFilterType>]
     public Task<bool> HasLifeCycleDataAsync(
         [GraphQLType<LocaleType>] string? locale,

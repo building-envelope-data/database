@@ -62,6 +62,29 @@ public sealed class GeometricDataQueries
         );
     }
 
+    [UsePaging]
+    [UseFiltering<GeometricDataFilterType>]
+    [UseSorting<GeometricDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<GeometricData>> GetAllRetractedGeometricDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllRetractedDataAsync(
+            databaseContext => databaseContext.GeometricData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
     [UseFiltering<GeometricDataFilterType>]
     public Task<bool> HasGeometricDataAsync(
         [GraphQLType<LocaleType>] string? locale,

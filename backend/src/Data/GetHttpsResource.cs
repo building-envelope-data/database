@@ -231,7 +231,7 @@ public sealed class GetHttpsResource
     [InverseProperty(nameof(Parent))]
     public ICollection<GetHttpsResource> Children { get; } = [];
 
-    public bool UpdateFileExtension(string? fileExtension)
+    internal bool UpdateFileExtension(string? fileExtension)
     {
         if (fileExtension == FileExtension)
         {
@@ -252,12 +252,12 @@ public sealed class GetHttpsResource
         return File.Exists(FilePath);
     }
 
-    public void DeleteFile()
+    internal void DeleteFile()
     {
         File.Delete(FilePath);
     }
 
-    public async Task RecomputeHashValue(CancellationToken cancellationToken)
+    internal async Task RecomputeHashValue(CancellationToken cancellationToken)
     {
         HashValue = await Sha256FileHasher.ComputeForFile(FilePath, cancellationToken);
     }
@@ -272,7 +272,7 @@ public sealed class GetHttpsResource
         return ParentId is not null;
     }
 
-    public static string ConstructVertexId(Guid id)
+    internal static string ConstructVertexId(Guid id)
     {
         return id.ToString("D").Base64Encode();
     }

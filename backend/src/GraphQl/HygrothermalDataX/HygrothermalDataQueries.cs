@@ -62,6 +62,29 @@ public sealed class HygrothermalDataQueries
         );
     }
 
+    [UsePaging]
+    [UseFiltering<HygrothermalDataFilterType>]
+    [UseSorting<HygrothermalDataSortType>]
+    public Task<HotChocolate.Types.Pagination.Connection<HygrothermalData>> GetAllRetractedHygrothermalDataAsync(
+        [GraphQLType<LocaleType>] string? locale,
+        IDbContextFactory<ApplicationDbContext> databaseContextFactory,
+        AccessPolicyService accessPolicyService,
+        IResolverContext resolverContext,
+        CommonAuthorization authorization,
+        CancellationToken cancellationToken
+    )
+    {
+        return GetAllRetractedDataAsync(
+            databaseContext => databaseContext.HygrothermalData,
+            locale,
+            databaseContextFactory,
+            accessPolicyService,
+            resolverContext,
+            authorization,
+            cancellationToken
+        );
+    }
+
     [UseFiltering<HygrothermalDataFilterType>]
     public Task<bool> HasHygrothermalDataAsync(
         [GraphQLType<LocaleType>] string? locale,
