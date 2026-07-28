@@ -25,7 +25,7 @@ public static partial class Log
 {
     [LoggerMessage(
         Level = LogLevel.Error,
-        Message = "There is not file at the file path {FilePath} of the GET HTTPS resource {GetHttpsResourceId}."
+        Message = "There is no file at the file path {FilePath} of the GET HTTPS resource {GetHttpsResourceId}."
     )]
     public static partial void MissingFile(
         this ILogger<GetHttpsResourcesController> logger,
@@ -212,7 +212,10 @@ public sealed class GetHttpsResourcesController(
                 instance: HttpContext.Request.Path
             );
         }
-        getHttpsResource.UpdateFileExtension(dataFormat.Extension);
+        if (getHttpsResource.UpdateFileExtension(dataFormat.Extension))
+        {
+            await databaseContext.SaveChangesAsync(cancellationToken);
+        }
         return PhysicalFile(
             physicalPath: getHttpsResource.AbsoluteFilePath,
             contentType: dataFormat.MediaType,

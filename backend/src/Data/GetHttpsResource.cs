@@ -231,8 +231,12 @@ public sealed class GetHttpsResource
     [InverseProperty(nameof(Parent))]
     public ICollection<GetHttpsResource> Children { get; } = [];
 
-    public void UpdateFileExtension(string? fileExtension)
+    public bool UpdateFileExtension(string? fileExtension)
     {
+        if (fileExtension == FileExtension)
+        {
+            return false;
+        }
         var oldFilePath = FilePath;
         FileExtension = fileExtension;
         File.Move(
@@ -240,6 +244,7 @@ public sealed class GetHttpsResource
             FilePath,
             overwrite: true
         );
+        return true;
     }
 
     public bool DoesFileExist()
