@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 
 const url =
-  "https://dsi.informationssicherheit.fraunhofer.de/en/dsi/metabase.buildingenvelopedata.org";
+  "https://dsi-generator.fraunhofer.de/dsi/view/en/4a6d6d39-b4b2-48fe-8ea5-a2077ed527df/full/";
 const errorMessage = "Data protection information could not be fetched.";
 
 function Page() {
