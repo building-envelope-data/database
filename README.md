@@ -126,6 +126,11 @@ In another shell
 1. List all backend GNU Make targets by running `make help`.
 1. For example, update packages and tools by running `make update`.
 1. Drop out of the container by running `exit` or pressing `Ctrl-D`.
+1. If you want to test the interaction between `metabase` and `database`, try
+   the [tutorial](https://github.com/building-envelope-data/metabase/blob/develop/docs/tutorials/interaction_metabase_database.md).
+   The [tutorial](https://github.com/building-envelope-data/metabase/blob/develop/docs/tutorials/interaction_metabase_database.md)
+   also explains how you can create a dataset and how you can manage the access 
+   rights of your data.
 
 ### Migrating the Database
 
@@ -463,6 +468,11 @@ and the pages following it.
    `./deploy.mk rollback`, figure out what went wrong, apply the necessary
    fixes the configuration and try again, or apply fixes to the codebase,
    create a new release, and try to deploy that release instead.
+1. If you want to test the interaction between `metabase` and `database`, try
+   the [tutorial](https://github.com/building-envelope-data/metabase/blob/develop/docs/tutorials/interaction_metabase_database.md).
+   The [tutorial](https://github.com/building-envelope-data/metabase/blob/develop/docs/tutorials/interaction_metabase_database.md)
+   also explains how you can create a dataset and how you can manage the access 
+   rights of your data.
 
 ### Troubleshooting
 
